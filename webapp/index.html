@@ -1,0 +1,1196 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+  <title>USDT Clicker</title>
+
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+
+  <style>
+    :root{
+      --bg1:#071522;
+      --bg2:#0b2337;
+      --text:#e9f2ff;
+      --muted:#a9c0d8;
+      --accent:#2d7dff;
+      --accent2:#18c6a3;
+      --danger:#ff4d4d;
+
+      --radius:18px;
+      --radius2:14px;
+      --shadow: 0 18px 60px rgba(0,0,0,.45);
+
+      --safeTop: env(safe-area-inset-top, 0px);
+      --safeBot: env(safe-area-inset-bottom, 0px);
+    }
+
+    html, body{
+      height:100%;
+      margin:0;
+      padding:0;
+      background: radial-gradient(1200px 600px at 50% -50%, #19486c 0%, transparent 60%),
+                  linear-gradient(180deg, var(--bg2) 0%, var(--bg1) 70%);
+      color:var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, "Noto Sans", "Helvetica Neue", sans-serif;
+
+      touch-action: manipulation;
+      overscroll-behavior: none;
+      -webkit-text-size-adjust: 100%;
+    }
+
+    *{ box-sizing:border-box; }
+
+    .app{
+      height:100%;
+      display:flex;
+      flex-direction:column;
+      padding: calc(14px + var(--safeTop)) 14px calc(78px + var(--safeBot)) 14px;
+      gap:12px;
+      max-width: 520px;
+      margin: 0 auto;
+    }
+
+    .topbar{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+    }
+
+    .pill{
+      display:flex;
+      align-items:center;
+      gap:8px;
+      padding:8px 10px;
+      border:1px solid rgba(255,255,255,.08);
+      background: rgba(255,255,255,.05);
+      border-radius: 999px;
+      font-size:13px;
+      color: var(--muted);
+      user-select:none;
+      -webkit-user-select:none;
+      max-width: 70%;
+      overflow:hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .lang{
+      display:flex;
+      align-items:center;
+      gap:6px;
+    }
+    .lang button{
+      cursor:pointer;
+      border:1px solid rgba(255,255,255,.12);
+      background: rgba(255,255,255,.06);
+      color: var(--text);
+      padding:8px 10px;
+      border-radius: 999px;
+      font-weight:800;
+      font-size:12px;
+      touch-action: manipulation;
+    }
+    .lang button.active{
+      background: rgba(45,125,255,.22);
+      border-color: rgba(45,125,255,.35);
+    }
+
+    .card{
+      flex: 1;
+      display:flex;
+      min-height:0;
+      background: linear-gradient(180deg, rgba(255,255,255,.06) 0%, rgba(255,255,255,.03) 100%);
+      border: 1px solid rgba(255,255,255,.08);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      overflow:hidden;
+    }
+
+    .screen{
+      display:none;
+      flex:1;
+      min-height:0;
+      overflow-y:auto;
+      -webkit-overflow-scrolling: touch;
+      padding:14px;
+      touch-action: pan-y;
+    }
+    .screen.active{ display:block; }
+
+    .balanceWrap{
+      text-align:center;
+      padding: 16px 10px 10px;
+    }
+    .balanceLabel{
+      color:var(--muted);
+      font-size:12px;
+      letter-spacing:.18em;
+    }
+    .balance{
+      margin-top:8px;
+      font-size:48px;
+      font-weight:900;
+      line-height:1.0;
+      display:flex;
+      justify-content:center;
+      align-items:baseline;
+      gap:10px;
+    }
+    .balance span.unit{
+      font-size:16px;
+      color: var(--muted);
+      font-weight:800;
+      letter-spacing:.08em;
+    }
+
+    .subline{
+      margin-top:8px;
+      color: var(--muted);
+      font-size:13px;
+      line-height:1.35;
+    }
+
+    .coinWrap{
+      margin-top:14px;
+      display:flex;
+      justify-content:center;
+      align-items:center;
+    }
+
+    .coin{
+      width:min(280px, 76vw);
+      aspect-ratio: 1 / 1;
+      border-radius: 999px;
+      position:relative;
+      display:flex;
+      justify-content:center;
+      align-items:center;
+      overflow:hidden;
+
+      background:
+        radial-gradient(120px 120px at 40% 35%, rgba(255,255,255,.16) 0%, transparent 60%),
+        radial-gradient(220px 220px at 60% 65%, rgba(45,125,255,.16) 0%, transparent 60%),
+        rgba(255,255,255,.04);
+      border:1px solid rgba(255,255,255,.10);
+
+      -webkit-user-select:none;
+      user-select:none;
+      -webkit-tap-highlight-color: transparent;
+      cursor:pointer;
+
+      touch-action: none;
+    }
+    .coin:active{ transform: scale(0.995); }
+
+    .coinInner{
+      width:62%;
+      aspect-ratio: 1/1;
+      border-radius: 22px;
+      display:flex;
+      justify-content:center;
+      align-items:center;
+      position:relative;
+      background: rgba(0,0,0,.12);
+      border: 1px solid rgba(255,255,255,.10);
+    }
+
+    .coinInner img{
+      width: 78%;
+      height: 78%;
+      object-fit: contain;
+      filter: drop-shadow(0 10px 25px rgba(0,0,0,.35));
+      pointer-events:none;
+      user-select:none;
+      -webkit-user-drag:none;
+    }
+
+    .stats{
+      display:grid;
+      grid-template-columns: 1fr 1fr;
+      gap:10px;
+      margin-top:14px;
+    }
+
+    .stat{
+      background: rgba(0,0,0,.12);
+      border:1px solid rgba(255,255,255,.08);
+      border-radius: var(--radius2);
+      padding:10px 12px;
+    }
+
+    .stat .k{
+      color: var(--muted);
+      font-size:12px;
+      letter-spacing:.12em;
+    }
+    .stat .v{
+      margin-top:6px;
+      font-size:22px;
+      font-weight:900;
+    }
+    .stat .v small{
+      font-size:12px;
+      color: var(--muted);
+      font-weight:800;
+      letter-spacing:.08em;
+      margin-left:6px;
+    }
+
+    .hint{
+      margin-top:10px;
+      background: rgba(0,0,0,.10);
+      border:1px solid rgba(255,255,255,.08);
+      border-radius: var(--radius2);
+      padding:10px 12px;
+      color: var(--muted);
+      font-size:13px;
+      line-height:1.35;
+      text-align:left;
+    }
+    .hint b{ color: var(--text); }
+
+    .plus{
+      position:absolute;
+      transform: translate(-50%, -50%);
+      font-weight:900;
+      font-size:18px;
+      color: #dff6ff;
+      text-shadow: 0 6px 20px rgba(0,0,0,.55);
+      animation: floatUp 900ms ease-out forwards;
+      pointer-events:none;
+      user-select:none;
+    }
+    @keyframes floatUp{
+      0%   { opacity:0; transform: translate(-50%,-30%) scale(.95); }
+      20%  { opacity:1; }
+      100% { opacity:0; transform: translate(-50%,-110%) scale(1.06); }
+    }
+
+    .tabs{
+      position: fixed;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      padding: 10px 12px calc(10px + var(--safeBot)) 12px;
+      background: linear-gradient(180deg, rgba(6,14,22,0) 0%, rgba(6,14,22,.70) 25%, rgba(6,14,22,.92) 100%);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      touch-action: manipulation;
+    }
+    .tabsInner{
+      max-width:520px;
+      margin:0 auto;
+      display:flex;
+      gap:10px;
+      justify-content:space-between;
+      align-items:center;
+    }
+
+    .tabBtn{
+      flex:1;
+      border:1px solid rgba(255,255,255,.10);
+      background: rgba(255,255,255,.06);
+      color: var(--muted);
+      padding:12px 12px;
+      border-radius: 16px;
+      font-weight:900;
+      letter-spacing:.02em;
+      cursor:pointer;
+      user-select:none;
+      -webkit-user-select:none;
+      touch-action: manipulation;
+    }
+    .tabBtn.active{
+      color: var(--text);
+      border-color: rgba(45,125,255,.35);
+      background: rgba(45,125,255,.18);
+    }
+
+    .row{ display:flex; gap:10px; flex-wrap:wrap; }
+    .box{
+      flex:1;
+      min-width: 170px;
+      background: rgba(0,0,0,.12);
+      border:1px solid rgba(255,255,255,.08);
+      border-radius: var(--radius2);
+      padding:12px;
+    }
+    .box h3{
+      margin:0 0 8px;
+      font-size:13px;
+      color: var(--muted);
+      letter-spacing:.12em;
+    }
+    .bigNum{
+      font-size:30px;
+      font-weight:900;
+    }
+
+    .field{
+      display:flex;
+      gap:8px;
+      margin-top:10px;
+      touch-action: manipulation;
+    }
+
+    input, select{
+      width:100%;
+      padding:12px 12px;
+      border-radius: 14px;
+      border:1px solid rgba(255,255,255,.12);
+      background: rgba(255,255,255,.06);
+      color: var(--text);
+      outline:none;
+      font-size:14px;
+      touch-action: manipulation;
+    }
+
+    .btn{
+      border:none;
+      border-radius: 14px;
+      padding:12px 12px;
+      background: rgba(45,125,255,.25);
+      color: var(--text);
+      font-weight:900;
+      cursor:pointer;
+      border:1px solid rgba(45,125,255,.35);
+      touch-action: manipulation;
+      width:100%;
+    }
+    .btn.danger{
+      background: rgba(255,77,77,.18);
+      border:1px solid rgba(255,77,77,.35);
+    }
+    .btn.ghost{
+      background: rgba(255,255,255,.06);
+      border:1px solid rgba(255,255,255,.10);
+      color: var(--text);
+      width:auto;
+      white-space:nowrap;
+      padding:12px 14px;
+    }
+    .btn:disabled{ opacity:.55; cursor:not-allowed; }
+
+    .list{
+      margin-top:10px;
+      display:flex;
+      flex-direction:column;
+      gap:8px;
+      max-height: 320px;
+      overflow:auto;
+      padding-right:4px;
+      touch-action: pan-y;
+    }
+    .item{
+      display:flex;
+      justify-content:space-between;
+      gap:10px;
+      padding:10px 12px;
+      border-radius: 14px;
+      border:1px solid rgba(255,255,255,.08);
+      background: rgba(0,0,0,.10);
+      font-size:14px;
+    }
+    .muted{ color: var(--muted); }
+
+    .divider{
+      margin:14px 0 10px;
+      height:1px;
+      background: rgba(255,255,255,.08);
+    }
+
+    .subCard{
+      margin-top:10px;
+      border:1px solid rgba(255,255,255,.08);
+      background: rgba(0,0,0,.10);
+      border-radius: 16px;
+      padding:12px;
+      touch-action: manipulation;
+    }
+    .subCard h3{
+      margin:0 0 8px;
+      font-size:13px;
+      color: var(--muted);
+      letter-spacing:.12em;
+    }
+
+    .plan{
+      border:1px solid rgba(255,255,255,.10);
+      background: rgba(0,0,0,.10);
+      border-radius: 16px;
+      padding:12px;
+      margin-top:10px;
+      touch-action: manipulation;
+    }
+    .planTop{
+      display:flex;
+      align-items:flex-start;
+      justify-content:space-between;
+      gap:10px;
+    }
+    .planTitle{ font-weight:900; font-size:16px; }
+    .planDesc{
+      margin-top:6px;
+      color: var(--muted);
+      font-size:13px;
+      line-height:1.35;
+    }
+    .planRight{
+      text-align:right;
+      font-weight:900;
+      white-space:nowrap;
+      color: var(--accent2);
+    }
+
+    .note{
+      margin-top:8px;
+      color: var(--muted);
+      font-size:13px;
+      line-height:1.35;
+      text-align:left;
+    }
+    .note.error{ color: #ff9b9b; }
+
+    .modalBack{
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,.55);
+      display:none;
+      align-items:center;
+      justify-content:center;
+      padding:20px;
+      z-index: 9999;
+    }
+    .modalBack.active{ display:flex; }
+    .modal{
+      width: min(520px, 100%);
+      border-radius: 18px;
+      border:1px solid rgba(255,255,255,.10);
+      background: rgba(10,20,32,.92);
+      box-shadow: var(--shadow);
+      padding:14px;
+    }
+    .modalTitle{
+      font-weight:900;
+      font-size:16px;
+      margin:0 0 8px;
+    }
+    .modalText{
+      color: var(--muted);
+      font-size:13px;
+      line-height:1.35;
+      margin:0 0 12px;
+    }
+    .modalBtns{ display:flex; gap:10px; }
+  </style>
+</head>
+
+<body>
+  <div class="app">
+    <div class="topbar">
+      <div class="pill">👤 <span id="userName">—</span></div>
+      <div class="lang">
+        <button id="btnRU" class="active">RU</button>
+        <button id="btnEN">EN</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="screen active" id="screenHome">
+        <div class="balanceWrap">
+          <div class="balanceLabel" data-i18n="balance_label">BALANCE</div>
+          <div class="balance">
+            <div id="balanceVal">0.0000</div>
+            <span class="unit">USDT</span>
+          </div>
+          <div class="subline" id="planLine"></div>
+        </div>
+
+        <div class="coinWrap">
+          <div class="coin" id="coin">
+            <div class="coinInner" id="coinInner">
+              <img id="logoImg" src="/static/logo.png" alt="USDT" />
+            </div>
+          </div>
+        </div>
+
+        <div class="stats">
+          <div class="stat">
+            <div class="k" data-i18n="taps_left">TAPS LEFT</div>
+            <div class="v"><span id="tapsLeft">10000</span></div>
+          </div>
+          <div class="stat">
+            <div class="k" data-i18n="reward">REWARD</div>
+            <div class="v">+<span id="rewardVal">0.0001</span> <small>USDT</small></div>
+          </div>
+        </div>
+
+        <div class="subCard">
+          <h3 data-i18n="top3">TOP 3</h3>
+          <div class="list" id="topList"></div>
+        </div>
+
+        <div class="hint" id="hintBox"></div>
+      </div>
+
+      <div class="screen" id="screenInvite">
+        <div class="balanceWrap" style="padding-top:6px">
+          <div class="balanceLabel" data-i18n="invite_title">INVITE</div>
+          <div class="subline" data-i18n="invite_sub">
+            Invite friends and earn 0.1 USDT for each friend.
+          </div>
+          <div class="subline" data-i18n="invite_sub2">
+            0.1 USDT is credited after your referral makes 10,000 clicks and earns 1 USDT.
+          </div>
+        </div>
+
+        <div class="row">
+          <div class="box">
+            <h3 data-i18n="invited_count">INVITED</h3>
+            <div class="bigNum"><span id="invitedCount">0</span></div>
+          </div>
+          <div class="box">
+            <h3 data-i18n="invite_bonus">BONUS</h3>
+            <div class="bigNum">+<span id="inviteBonusTotal">0.0000</span> <span class="muted">USDT</span></div>
+          </div>
+        </div>
+
+        <div class="subCard">
+          <h3 data-i18n="your_link">YOUR REFERRAL LINK</h3>
+          <div class="field">
+            <input id="refLink" readonly />
+            <button class="btn" id="copyRef" data-i18n="copy">Copy</button>
+          </div>
+        </div>
+
+        <div class="subCard">
+          <h3 data-i18n="ref_list">REFERRALS</h3>
+          <div class="list" id="refList"></div>
+        </div>
+      </div>
+
+      <div class="screen" id="screenCabinet">
+        <div class="balanceWrap" style="padding-top:6px">
+          <div class="balanceLabel" data-i18n="account_title">ACCOUNT</div>
+          <div class="subline" data-i18n="account_sub">Packages</div>
+        </div>
+
+        <div class="subCard" style="margin-top:0;">
+          <h3 data-i18n="account_balance">YOUR BALANCE</h3>
+          <div class="bigNum"><span id="cabBalance">0.0000</span> <span class="muted">USDT</span></div>
+        </div>
+
+        <div id="plans"></div>
+
+        <div class="divider"></div>
+
+        <div class="subCard">
+          <h3 data-i18n="withdraw">WITHDRAW</h3>
+
+          <div class="note" id="withdrawInfo"></div>
+
+          <div class="field">
+            <select id="withdrawNet">
+              <option value="BEP20">BEP20</option>
+              <option value="TON">TON</option>
+              <option value="TRC20">TRC20</option>
+            </select>
+          </div>
+
+          <div class="field">
+            <input id="withdrawAddr" data-i18n-ph="wallet_address" placeholder="Wallet address" />
+          </div>
+
+          <div class="field">
+            <input id="withdrawAmount" inputmode="decimal" placeholder="Amount (USDT)" />
+            <button class="btn ghost" id="withdrawMax">MAX</button>
+          </div>
+
+          <div class="note" id="withdrawError" style="display:none;"></div>
+
+          <div class="field">
+            <button class="btn" id="withdrawBtn" data-i18n="send_withdraw">Send request</button>
+          </div>
+
+          <div class="note" data-i18n="withdraw_note">
+            Withdrawals are processed within 24 hours.
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="tabs">
+    <div class="tabsInner">
+      <button class="tabBtn" id="tabInvite" data-i18n="tab_invite">Invite</button>
+      <button class="tabBtn active" id="tabHome" data-i18n="tab_home">Tap</button>
+      <button class="tabBtn" id="tabCabinet" data-i18n="tab_account">Account</button>
+    </div>
+  </div>
+
+  <div class="modalBack" id="modalBack">
+    <div class="modal">
+      <div class="modalTitle" id="modalTitle">—</div>
+      <div class="modalText" id="modalText">—</div>
+      <div class="modalBtns">
+        <button class="btn danger" id="modalClose">OK</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // =========================
+    // CONFIG
+    // =========================
+    const BOT_USERNAME = "hfufh4fu4bot"; // no @
+    const TAP_REWARD = 0.0001;           // +0.0001 USDT per tap
+    const FREE_TAPS = 10000;             // 10 000 free taps
+    const WITHDRAW_MIN = 20.0;
+
+    // Packs (UI only for now)
+    const PLANS_UI = [
+      { id:"newbie", deposit:10,  taps:100000, reward:0.001,  emoji:"🐣", ru:"Новичок", en:"Beginner", profitFixed: 20 },
+      { id:"pro",    deposit:50,  taps:100000, reward:0.0005, emoji:"🧠", ru:"Профи",   en:"Pro",      profitFixed: 100 },
+      { id:"whale",  deposit:100, taps:100000, reward:0.002,  emoji:"🐋", ru:"Кит",     en:"Whale",    profitFixed: null }
+    ];
+
+    // =========================
+    // I18N
+    // =========================
+    const I18N = {
+      ru: {
+        balance_label: "БАЛАНС",
+        taps_left: "ОСТАЛОСЬ ТАПОВ",
+        reward: "НАГРАДА",
+        top3: "ТОП 3",
+        tab_invite: "Пригласить",
+        tab_home: "Tap",         // ✅ no translation
+        tab_account: "Аккаунт",
+        invite_title: "ПРИГЛАСИТЬ",
+        invite_sub: "Приглашай друзей и зарабатывай 0.1 USDT за каждого приведённого друга.",
+        invite_sub2: "0.1 USDT начисляется после того, как реферал сделает 10 000 кликов и получит 1 USDT.",
+        invited_count: "ПРИГЛАШЕНО",
+        invite_bonus: "БОНУС",
+        your_link: "ТВОЯ РЕФ-СЫЛКА",
+        copy: "Копировать",
+        ref_list: "РЕФЕРАЛЫ",
+        account_title: "АККАУНТ",
+        account_sub: "Пакеты",
+        account_balance: "ТВОЙ БАЛАНС",
+        withdraw: "ВЫВОД",
+        wallet_address: "Адрес кошелька",
+        send_withdraw: "Отправить",
+        withdraw_note: "Запросы на вывод обрабатываются в течение 24 часов.",
+        profit: "Прибыль",
+        empty_top: "Пока нет данных",
+        no_refs: "Пока никто не перешёл",
+        hint: () => `🎁 <b>10 000 бесплатных тапов</b>`,
+        w_info: (bal) => `Доступно: <b>${bal} USDT</b><br>Минимальный вывод: <b>${WITHDRAW_MIN.toFixed(0)} USDT</b>`,
+        w_min_err: `Минимальная сумма вывода — ${WITHDRAW_MIN.toFixed(0)} USDT.`,
+        w_addr_err: "Вставь адрес кошелька.",
+        w_amt_err: "Введи сумму вывода.",
+        w_amt_bad: "Некорректная сумма.",
+        w_amt_over: "Недостаточно средств.",
+        w_processing_title: "Заявка принята",
+        w_processing_text: "Статус: в обработке. Вывод может занять до 24 часов."
+      },
+      en: {
+        balance_label: "BALANCE",
+        taps_left: "TAPS LEFT",
+        reward: "REWARD",
+        top3: "TOP 3",
+        tab_invite: "Invite",
+        tab_home: "Tap",         // ✅ same
+        tab_account: "Account",
+        invite_title: "INVITE",
+        invite_sub: "Invite friends and earn 0.1 USDT for each invited friend.",
+        invite_sub2: "0.1 USDT is credited after your referral makes 10,000 clicks and earns 1 USDT.",
+        invited_count: "INVITED",
+        invite_bonus: "BONUS",
+        your_link: "YOUR REF LINK",
+        copy: "Copy",
+        ref_list: "REFERRALS",
+        account_title: "ACCOUNT",
+        account_sub: "Packages",
+        account_balance: "YOUR BALANCE",
+        withdraw: "WITHDRAW",
+        wallet_address: "Wallet address",
+        send_withdraw: "Send",
+        withdraw_note: "Withdrawal requests are processed within 24 hours.",
+        profit: "Profit",
+        empty_top: "No data yet",
+        no_refs: "No one joined yet",
+        hint: () => `🎁 <b>10,000 free taps</b>`,
+        w_info: (bal) => `Available: <b>${bal} USDT</b><br>Minimum withdraw: <b>${WITHDRAW_MIN.toFixed(0)} USDT</b>`,
+        w_min_err: `Minimum withdraw is ${WITHDRAW_MIN.toFixed(0)} USDT.`,
+        w_addr_err: "Enter wallet address.",
+        w_amt_err: "Enter withdraw amount.",
+        w_amt_bad: "Invalid amount.",
+        w_amt_over: "Insufficient balance.",
+        w_processing_title: "Request submitted",
+        w_processing_text: "Status: processing. Withdrawal may take up to 24 hours."
+      }
+    };
+
+    // =========================
+    // Telegram init
+    // =========================
+    const tg = window.Telegram?.WebApp;
+    if (tg) { tg.ready(); tg.expand(); }
+
+    document.addEventListener("gesturestart", (e) => e.preventDefault(), { passive:false });
+    document.addEventListener("gesturechange", (e) => e.preventDefault(), { passive:false });
+    document.addEventListener("gestureend", (e) => e.preventDefault(), { passive:false });
+    document.addEventListener("dblclick", (e) => e.preventDefault(), { passive:false });
+
+    let lastTouchEnd = 0;
+    document.addEventListener("touchend", (e) => {
+      const now = Date.now();
+      if (now - lastTouchEnd <= 250) e.preventDefault();
+      lastTouchEnd = now;
+    }, { passive:false });
+
+    // =========================
+    // Local Storage helpers
+    // =========================
+    const LS = {
+      keyUser: (userId) => `usdtclicker:user:${userId}`,
+      keyLB:  () => `usdtclicker:leaderboard`,
+      readJSON: (key, fallback) => {
+        try{
+          const raw = localStorage.getItem(key);
+          return raw ? JSON.parse(raw) : fallback;
+        }catch(e){ return fallback; }
+      },
+      writeJSON: (key, obj) => {
+        try{ localStorage.setItem(key, JSON.stringify(obj)); }catch(e){}
+      }
+    };
+
+    // =========================
+    // State
+    // =========================
+    const state = {
+      lang: "ru",
+      userId: null,
+      fullName: "User",
+      balance: 0,
+      tapsLeft: FREE_TAPS,
+      reward: TAP_REWARD
+    };
+
+    function fmtBalance(x){
+      if (x < 1) return x.toFixed(4);
+      if (x < 100) return x.toFixed(3);
+      return x.toFixed(2);
+    }
+
+    function detectLang(){
+      const tgLang = (tg?.initDataUnsafe?.user?.language_code || "").toLowerCase();
+      if (tgLang.startsWith("en")) return "en";
+      return "ru";
+    }
+
+    function initFromTelegram(){
+      const u = tg?.initDataUnsafe?.user;
+      if (u){
+        state.userId = u.id;
+        const first = (u.first_name || "").trim();
+        const last  = (u.last_name || "").trim();
+        state.fullName = (first + " " + last).trim() || "User";
+      } else {
+        // browser fallback
+        state.userId = 999001;
+        state.fullName = "Browser User";
+      }
+      document.getElementById("userName").textContent = state.fullName;
+      state.lang = detectLang();
+    }
+
+    function loadUserLocal(){
+      const saved = LS.readJSON(LS.keyUser(state.userId), null);
+      if (saved){
+        state.balance = Number(saved.balance || 0);
+        state.tapsLeft = Number(saved.tapsLeft ?? FREE_TAPS);
+      } else {
+        state.balance = 0;
+        state.tapsLeft = FREE_TAPS;
+        saveUserLocal();
+      }
+    }
+
+    function saveUserLocal(){
+      LS.writeJSON(LS.keyUser(state.userId), {
+        balance: state.balance,
+        tapsLeft: state.tapsLeft
+      });
+    }
+
+    function updateLeaderboardOnTap(){
+      const lb = LS.readJSON(LS.keyLB(), {});
+      if (!lb[String(state.userId)]){
+        lb[String(state.userId)] = { user_id: state.userId, name: state.fullName, taps: 0 };
+      }
+      lb[String(state.userId)].name = state.fullName;
+      lb[String(state.userId)].taps = Number(lb[String(state.userId)].taps || 0) + 1;
+      LS.writeJSON(LS.keyLB(), lb);
+    }
+
+    function getTop3(){
+      const lb = LS.readJSON(LS.keyLB(), {});
+      const arr = Object.values(lb || {});
+      arr.sort((a,b)=> (Number(b.taps||0) - Number(a.taps||0)));
+      return arr.slice(0,3);
+    }
+
+    // =========================
+    // UI: screens
+    // =========================
+    const screenHome = document.getElementById("screenHome");
+    const screenInvite = document.getElementById("screenInvite");
+    const screenCabinet = document.getElementById("screenCabinet");
+
+    const tabInvite = document.getElementById("tabInvite");
+    const tabHome = document.getElementById("tabHome");
+    const tabCabinet = document.getElementById("tabCabinet");
+
+    function showScreen(name){
+      screenHome.classList.toggle("active", name === "home");
+      screenInvite.classList.toggle("active", name === "invite");
+      screenCabinet.classList.toggle("active", name === "cabinet");
+
+      tabInvite.classList.toggle("active", name === "invite");
+      tabHome.classList.toggle("active", name === "home");
+      tabCabinet.classList.toggle("active", name === "cabinet");
+    }
+
+    tabInvite.addEventListener("click", () => showScreen("invite"));
+    tabHome.addEventListener("click", () => showScreen("home"));
+    tabCabinet.addEventListener("click", () => showScreen("cabinet"));
+
+    // =========================
+    // Modal
+    // =========================
+    const modalBack = document.getElementById("modalBack");
+    const modalTitle = document.getElementById("modalTitle");
+    const modalText  = document.getElementById("modalText");
+    const modalClose = document.getElementById("modalClose");
+
+    function openModal(title, text){
+      modalTitle.textContent = title;
+      modalText.textContent = text;
+      modalBack.classList.add("active");
+    }
+    function closeModal(){ modalBack.classList.remove("active"); }
+
+    modalClose.addEventListener("click", closeModal);
+    modalBack.addEventListener("click", (e)=>{ if(e.target === modalBack) closeModal(); });
+
+    // =========================
+    // Language
+    // =========================
+    function setLang(lang){
+      state.lang = lang;
+
+      document.getElementById("btnRU").classList.toggle("active", lang==="ru");
+      document.getElementById("btnEN").classList.toggle("active", lang==="en");
+
+      document.querySelectorAll("[data-i18n]").forEach(el=>{
+        const key = el.getAttribute("data-i18n");
+        const val = I18N[lang][key];
+        if (typeof val === "string") el.textContent = val;
+      });
+
+      document.querySelectorAll("[data-i18n-ph]").forEach(el=>{
+        const key = el.getAttribute("data-i18n-ph");
+        const val = I18N[lang][key];
+        if (typeof val === "string") el.setAttribute("placeholder", val);
+      });
+
+      render();
+      renderPlans();
+      renderTop3();
+      renderInviteStub();
+    }
+
+    document.getElementById("btnRU").addEventListener("click", ()=>setLang("ru"));
+    document.getElementById("btnEN").addEventListener("click", ()=>setLang("en"));
+
+    // =========================
+    // Render
+    // =========================
+    function render(){
+      document.getElementById("balanceVal").textContent = fmtBalance(state.balance);
+      document.getElementById("tapsLeft").textContent = state.tapsLeft;
+      document.getElementById("rewardVal").textContent = state.reward.toFixed(4);
+
+      // ✅ TAP word no translation
+      document.getElementById("planLine").textContent = `+${state.reward.toFixed(4)} USDT / TAP`;
+
+      // ✅ bottom hint only 1 line
+      document.getElementById("hintBox").innerHTML = I18N[state.lang].hint();
+
+      document.getElementById("cabBalance").textContent = fmtBalance(state.balance);
+
+      const wi = document.getElementById("withdrawInfo");
+      wi.innerHTML = I18N[state.lang].w_info(fmtBalance(state.balance));
+      document.getElementById("withdrawBtn").disabled = state.balance < WITHDRAW_MIN;
+    }
+
+    function renderTop3(){
+      const top = document.getElementById("topList");
+      top.innerHTML = "";
+      const list = getTop3();
+
+      if (!list.length){
+        const it = document.createElement("div");
+        it.className = "item";
+        it.innerHTML = `<span class="muted">${I18N[state.lang].empty_top}</span><span class="muted">—</span>`;
+        top.appendChild(it);
+        return;
+      }
+
+      list.forEach((p, idx)=>{
+        const name = (p.name || "—").trim();
+        const it = document.createElement("div");
+        it.className = "item";
+        it.innerHTML = `<span>#${idx+1} ${escapeHtml(name)}</span><span class="muted">${(p.taps||0)} taps</span>`;
+        top.appendChild(it);
+      });
+    }
+
+    function renderInviteStub(){
+      document.getElementById("invitedCount").textContent = "0";
+      document.getElementById("inviteBonusTotal").textContent = "0.0000";
+
+      const list = document.getElementById("refList");
+      list.innerHTML = "";
+      const empty = document.createElement("div");
+      empty.className = "item";
+      empty.innerHTML = `<span class="muted">${I18N[state.lang].no_refs}</span><span class="muted">—</span>`;
+      list.appendChild(empty);
+
+      document.getElementById("refLink").value = getRefLink();
+    }
+
+    function renderPlans(){
+      const wrap = document.getElementById("plans");
+      wrap.innerHTML = "";
+
+      PLANS_UI.forEach(p => {
+        const title = (state.lang==="ru") ? `${p.emoji} ${p.ru}` : `${p.emoji} ${p.en}`;
+
+        let profit = p.profitFixed;
+        if (profit == null){
+          profit = (p.taps * p.reward);
+        }
+
+        const card = document.createElement("div");
+        card.className = "plan";
+        card.innerHTML = `
+          <div class="planTop">
+            <div>
+              <div class="planTitle">${title}</div>
+              <div class="planDesc">
+                ${state.lang==="ru"
+                  ? `Пополнение: <b>${p.deposit} USDT</b><br>Тапов: <b>${p.taps.toLocaleString()}</b><br>Награда: <b>${p.reward}</b> USDT / TAP`
+                  : `Deposit: <b>${p.deposit} USDT</b><br>Taps: <b>${p.taps.toLocaleString()}</b><br>Reward: <b>${p.reward}</b> USDT / TAP`
+                }
+              </div>
+            </div>
+            <div class="planRight">
+              ${I18N[state.lang].profit}<br>
+              ${Number(profit).toFixed(0)} USDT
+            </div>
+          </div>
+          <div class="field" style="margin-top:12px">
+            <button class="btn" data-plan="${p.id}">
+              ${state.lang==="ru" ? "Выбрать пакет" : "Select package"}
+            </button>
+          </div>
+        `;
+        wrap.appendChild(card);
+      });
+
+      wrap.querySelectorAll("button[data-plan]").forEach(btn=>{
+        btn.addEventListener("click", ()=>{
+          alert(state.lang==="ru"
+            ? "Пакеты подключим позже (когда вернём бэкенд). Сейчас добиваем UI."
+            : "We will connect packages later (when backend is back). UI first."
+          );
+        });
+      });
+    }
+
+    // =========================
+    // Tap logic (local)
+    // =========================
+    const coin = document.getElementById("coin");
+
+    function spawnPlus(e){
+      const rect = coin.getBoundingClientRect();
+      const clientX = (e.touches ? e.touches[0].clientX : e.clientX);
+      const clientY = (e.touches ? e.touches[0].clientY : e.clientY);
+      const x = clientX - rect.left;
+      const y = clientY - rect.top;
+
+      const plus = document.createElement("div");
+      plus.className = "plus";
+      plus.style.left = x + "px";
+      plus.style.top = y + "px";
+      plus.textContent = "+" + state.reward.toFixed(4);
+      coin.appendChild(plus);
+      setTimeout(()=>plus.remove(), 900);
+    }
+
+    let tapLock = false;
+    function tap(e){
+      e.preventDefault();
+      if (tapLock) return;
+      tapLock = true;
+
+      try{
+        if (state.tapsLeft <= 0){
+          openModal(
+            state.lang==="ru" ? "Тапы закончились" : "No taps left",
+            state.lang==="ru"
+              ? "Бесплатные тапы закончились. Пакеты подключим позже."
+              : "Free taps are over. Packages will be connected later."
+          );
+          return;
+        }
+
+        state.tapsLeft -= 1;
+        state.balance = Number(state.balance) + TAP_REWARD;
+
+        state.balance = Math.round(state.balance * 10000) / 10000;
+
+        updateLeaderboardOnTap();
+        saveUserLocal();
+
+        spawnPlus(e);
+        render();
+        renderTop3();
+      } finally {
+        tapLock = false;
+      }
+    }
+
+    coin.addEventListener("pointerdown", tap);
+    coin.addEventListener("touchstart", tap, { passive:false });
+
+    // =========================
+    // Withdraw logic (local)
+    // =========================
+    const wAddr = document.getElementById("withdrawAddr");
+    const wAmt = document.getElementById("withdrawAmount");
+    const wMax = document.getElementById("withdrawMax");
+    const wErr = document.getElementById("withdrawError");
+    const wBtn = document.getElementById("withdrawBtn");
+
+    function showWithdrawError(msg){
+      wErr.style.display = "block";
+      wErr.classList.add("error");
+      wErr.textContent = msg;
+    }
+    function clearWithdrawError(){
+      wErr.style.display = "none";
+      wErr.textContent = "";
+    }
+
+    wMax.addEventListener("click", ()=>{
+      wAmt.value = String(Math.floor(state.balance * 10000) / 10000);
+      clearWithdrawError();
+    });
+
+    wBtn.addEventListener("click", ()=>{
+      clearWithdrawError();
+
+      const addr = (wAddr.value || "").trim();
+      if (!addr){
+        showWithdrawError(I18N[state.lang].w_addr_err);
+        return;
+      }
+
+      const raw = (wAmt.value || "").trim().replace(",", ".");
+      if (!raw){
+        showWithdrawError(I18N[state.lang].w_amt_err);
+        return;
+      }
+
+      const amount = Number(raw);
+      if (!Number.isFinite(amount) || amount <= 0){
+        showWithdrawError(I18N[state.lang].w_amt_bad);
+        return;
+      }
+
+      if (amount < WITHDRAW_MIN){
+        showWithdrawError(I18N[state.lang].w_min_err);
+        return;
+      }
+
+      if (amount > state.balance + 1e-12){
+        showWithdrawError(I18N[state.lang].w_amt_over);
+        return;
+      }
+
+      state.balance = Number(state.balance - amount);
+      state.balance = Math.max(0, Math.round(state.balance * 10000) / 10000);
+
+      saveUserLocal();
+      render();
+
+      wAmt.value = "";
+      openModal(I18N[state.lang].w_processing_title, I18N[state.lang].w_processing_text);
+    });
+
+    // =========================
+    // Referral link (stub)
+    // =========================
+    function getRefLink(){
+      if (!state.userId) return "";
+      return `https://t.me/${BOT_USERNAME}?startapp=ref_${state.userId}`;
+    }
+
+    document.getElementById("copyRef").addEventListener("click", ()=>{
+      const link = document.getElementById("refLink").value;
+      if (!link) return;
+      try{ navigator.clipboard.writeText(link); }catch(e){}
+    });
+
+    // =========================
+    // Logo fix
+    // =========================
+    const logoImg = document.getElementById("logoImg");
+    logoImg.src = `/static/logo.png?v=${Date.now()}`;
+
+    logoImg.addEventListener("error", ()=>{
+      const inner = document.getElementById("coinInner");
+      inner.innerHTML = `<div style="font-weight:900; letter-spacing:.08em; color:#dff6ff">USDT</div>`;
+    });
+
+    // =========================
+    // Utils
+    // =========================
+    function escapeHtml(s){
+      return String(s || "").replace(/[&<>"']/g, (c) => ({
+        "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"
+      }[c]));
+    }
+
+    // =========================
+    // Boot
+    // =========================
+    (function boot(){
+      initFromTelegram();
+      loadUserLocal();
+      setLang(state.lang);
+      renderTop3();
+      renderInviteStub();
+      renderPlans();
+    })();
+  </script>
+</body>
+</html>
