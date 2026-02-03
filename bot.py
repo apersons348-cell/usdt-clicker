@@ -4,9 +4,8 @@ from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, WebAppI
 from telegram.ext import Application, CommandHandler, ContextTypes
 
 BOT_TOKEN = os.getenv("BOT_TOKEN", "").strip()
-BACKEND_URL = os.getenv("BACKEND_URL", "https://click-uper.com").rstrip("/")  # твой домен
-
-MINIAPP_URL = os.getenv("MINIAPP_URL", "https://click-uper.com").rstrip("/")  # куда открывать webapp
+BACKEND_URL = os.getenv("BACKEND_URL", "https://click-uper.com").rstrip("/")
+MINIAPP_URL = os.getenv("MINIAPP_URL", "https://click-uper.com").rstrip("/")
 
 def parse_ref(start_arg: str):
     # ожидаем ref_123
@@ -21,7 +20,7 @@ def parse_ref(start_arg: str):
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
-    if user is None:
+    if user is None or update.message is None:
         return
 
     invited_tg_id = user.id
@@ -42,7 +41,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 "last_name": user.last_name,
                 "referred_by": referrer_tg_id
             },
-            timeout=8
+            timeout=10
         )
     except Exception:
         pass
@@ -56,7 +55,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     "referrer_tg_id": referrer_tg_id,
                     "invited_tg_id": invited_tg_id
                 },
-                timeout=8
+                timeout=10
             )
         except Exception:
             pass
