@@ -4,7 +4,6 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
   <title>USDT Clicker</title>
-
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
 
   <style>
@@ -33,7 +32,6 @@
                   linear-gradient(180deg, var(--bg2) 0%, var(--bg1) 70%);
       color:var(--text);
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, "Noto Sans", "Helvetica Neue", sans-serif;
-
       touch-action: manipulation;
       overscroll-behavior: none;
       -webkit-text-size-adjust: 100%;
@@ -333,9 +331,10 @@
       gap:8px;
       margin-top:10px;
       touch-action: manipulation;
+      flex-wrap:wrap;
     }
 
-    input, select{
+    input, select, textarea{
       width:100%;
       padding:12px 12px;
       border-radius: 14px;
@@ -359,10 +358,6 @@
       touch-action: manipulation;
       width:100%;
     }
-    .btn.danger{
-      background: rgba(255,77,77,.18);
-      border:1px solid rgba(255,77,77,.35);
-    }
     .btn.ghost{
       background: rgba(255,255,255,.06);
       border:1px solid rgba(255,255,255,.10);
@@ -371,7 +366,14 @@
       white-space:nowrap;
       padding:12px 14px;
     }
-    .btn:disabled{ opacity:.55; cursor:not-allowed; }
+    .btn.ok{
+      background: rgba(24,198,163,.18);
+      border-color: rgba(24,198,163,.28);
+    }
+    .btn.danger{
+      background: rgba(255,77,77,.14);
+      border-color: rgba(255,77,77,.22);
+    }
 
     .list{
       margin-top:10px;
@@ -392,14 +394,9 @@
       border:1px solid rgba(255,255,255,.08);
       background: rgba(0,0,0,.10);
       font-size:14px;
+      align-items:center;
     }
     .muted{ color: var(--muted); }
-
-    .divider{
-      margin:14px 0 10px;
-      height:1px;
-      background: rgba(255,255,255,.08);
-    }
 
     .subCard{
       margin-top:10px;
@@ -416,74 +413,56 @@
       letter-spacing:.12em;
     }
 
-    .plan{
+    .pkgGrid{
+      display:flex;
+      flex-direction:column;
+      gap:10px;
+      margin-top:8px;
+    }
+    .pkg{
       border:1px solid rgba(255,255,255,.10);
-      background: rgba(0,0,0,.10);
+      background: rgba(255,255,255,.05);
       border-radius: 16px;
       padding:12px;
-      margin-top:10px;
-      touch-action: manipulation;
     }
-    .planTop{
+    .pkgTop{
       display:flex;
-      align-items:flex-start;
       justify-content:space-between;
+      align-items:flex-start;
       gap:10px;
     }
-    .planTitle{ font-weight:900; font-size:16px; }
-    .planDesc{
+    .pkgName{
+      font-weight:900;
+      font-size:16px;
+    }
+    .pkgPrice{
+      font-weight:900;
+      font-size:16px;
+      color:#dff6ff;
+      white-space:nowrap;
+    }
+    .pkgMeta{
       margin-top:6px;
       color: var(--muted);
       font-size:13px;
       line-height:1.35;
     }
-    .planRight{
-      text-align:right;
-      font-weight:900;
-      white-space:nowrap;
-      color: var(--accent2);
+    .pkgActions{
+      margin-top:10px;
+      display:flex;
+      gap:10px;
+      flex-wrap:wrap;
+    }
+    .pkgActions .btn{
+      width:auto;
+      flex:1;
+      min-width: 140px;
     }
 
-    .note{
-      margin-top:8px;
-      color: var(--muted);
-      font-size:13px;
-      line-height:1.35;
-      text-align:left;
+    .mono{
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      word-break: break-all;
     }
-    .note.error{ color: #ff9b9b; }
-
-    .modalBack{
-      position: fixed;
-      inset: 0;
-      background: rgba(0,0,0,.55);
-      display:none;
-      align-items:center;
-      justify-content:center;
-      padding:20px;
-      z-index: 9999;
-    }
-    .modalBack.active{ display:flex; }
-    .modal{
-      width: min(520px, 100%);
-      border-radius: 18px;
-      border:1px solid rgba(255,255,255,.10);
-      background: rgba(10,20,32,.92);
-      box-shadow: var(--shadow);
-      padding:14px;
-    }
-    .modalTitle{
-      font-weight:900;
-      font-size:16px;
-      margin:0 0 8px;
-    }
-    .modalText{
-      color: var(--muted);
-      font-size:13px;
-      line-height:1.35;
-      margin:0 0 12px;
-    }
-    .modalBtns{ display:flex; gap:10px; }
   </style>
 </head>
 
@@ -498,6 +477,7 @@
     </div>
 
     <div class="card">
+      <!-- HOME -->
       <div class="screen active" id="screenHome">
         <div class="balanceWrap">
           <div class="balanceLabel" data-i18n="balance_label">BALANCE</div>
@@ -519,22 +499,55 @@
         <div class="stats">
           <div class="stat">
             <div class="k" data-i18n="taps_left">TAPS LEFT</div>
-            <div class="v"><span id="tapsLeft">10000</span></div>
+            <div class="v"><span id="tapsLeft">—</span></div>
           </div>
           <div class="stat">
             <div class="k" data-i18n="reward">REWARD</div>
-            <div class="v">+<span id="rewardVal">0.0001</span> <small>USDT</small></div>
+            <div class="v">+<span id="rewardVal">0.0000</span> <small>USDT</small></div>
           </div>
         </div>
 
-        <div class="subCard">
-          <h3 data-i18n="top3">TOP 3</h3>
-          <div class="list" id="topList"></div>
-        </div>
-
         <div class="hint" id="hintBox"></div>
+
+        <!-- PACKAGES -->
+        <div class="subCard" id="shopCard">
+          <h3 data-i18n="packages_title">PACKAGES</h3>
+          <div class="subline" data-i18n="packages_sub">
+            Buy a package to get taps and higher reward.
+          </div>
+
+          <div class="pkgGrid" id="pkgGrid"></div>
+
+          <!-- PAYMENT PANEL -->
+          <div class="subCard" id="payPanel" style="display:none; margin-top:12px;">
+            <h3 data-i18n="payment_title">PAYMENT</h3>
+            <div class="subline" id="payInfoLine"></div>
+
+            <div class="field">
+              <input id="payAddress" class="mono" readonly />
+              <button class="btn ghost" id="copyAddressBtn" data-i18n="copy_address">Copy address</button>
+            </div>
+
+            <div class="field">
+              <input id="payAmount" class="mono" readonly />
+              <button class="btn ghost" id="copyAmountBtn" data-i18n="copy_amount">Copy amount</button>
+            </div>
+
+            <div class="field">
+              <button class="btn ok" id="checkPayBtn" data-i18n="check_payment">Check payment</button>
+              <button class="btn danger" id="closePayBtn" data-i18n="close">Close</button>
+            </div>
+
+            <div class="subline" style="margin-top:8px">
+              <span class="muted" data-i18n="payment_note">
+                IMPORTANT: send the exact amount (10.xxxxxx). The server matches payment by amount.
+              </span>
+            </div>
+          </div>
+        </div>
       </div>
 
+      <!-- INVITE -->
       <div class="screen" id="screenInvite">
         <div class="balanceWrap" style="padding-top:6px">
           <div class="balanceLabel" data-i18n="invite_title">INVITE</div>
@@ -563,6 +576,9 @@
             <input id="refLink" readonly />
             <button class="btn" id="copyRef" data-i18n="copy">Copy</button>
           </div>
+          <div class="subline" style="margin-top:8px">
+            <span class="muted">Важно:</span> ссылка ведёт в бота (чтобы сработал /start и рефералка).
+          </div>
         </div>
 
         <div class="subCard">
@@ -571,10 +587,11 @@
         </div>
       </div>
 
+      <!-- CABINET -->
       <div class="screen" id="screenCabinet">
         <div class="balanceWrap" style="padding-top:6px">
           <div class="balanceLabel" data-i18n="account_title">ACCOUNT</div>
-          <div class="subline" data-i18n="account_sub">Packages</div>
+          <div class="subline" data-i18n="account_sub">Server data</div>
         </div>
 
         <div class="subCard" style="margin-top:0;">
@@ -582,41 +599,17 @@
           <div class="bigNum"><span id="cabBalance">0.0000</span> <span class="muted">USDT</span></div>
         </div>
 
-        <div id="plans"></div>
-
-        <div class="divider"></div>
+        <div class="subCard">
+          <h3>SERVER</h3>
+          <div class="subline" id="serverLine">
+            userId: <b id="srvUserId">—</b><br>
+            status: <b id="srvStatus">—</b>
+          </div>
+        </div>
 
         <div class="subCard">
-          <h3 data-i18n="withdraw">WITHDRAW</h3>
-
-          <div class="note" id="withdrawInfo"></div>
-
-          <div class="field">
-            <select id="withdrawNet">
-              <option value="BEP20">BEP20</option>
-              <option value="TON">TON</option>
-              <option value="TRC20">TRC20</option>
-            </select>
-          </div>
-
-          <div class="field">
-            <input id="withdrawAddr" data-i18n-ph="wallet_address" placeholder="Wallet address" />
-          </div>
-
-          <div class="field">
-            <input id="withdrawAmount" inputmode="decimal" placeholder="Amount (USDT)" />
-            <button class="btn ghost" id="withdrawMax">MAX</button>
-          </div>
-
-          <div class="note" id="withdrawError" style="display:none;"></div>
-
-          <div class="field">
-            <button class="btn" id="withdrawBtn" data-i18n="send_withdraw">Send request</button>
-          </div>
-
-          <div class="note" data-i18n="withdraw_note">
-            Withdrawals are processed within 24 hours.
-          </div>
+          <h3 data-i18n="tap_stats">TAP STATS</h3>
+          <div class="subline" id="tapStatsLine">—</div>
         </div>
       </div>
     </div>
@@ -625,18 +618,8 @@
   <div class="tabs">
     <div class="tabsInner">
       <button class="tabBtn" id="tabInvite" data-i18n="tab_invite">Invite</button>
-      <button class="tabBtn active" id="tabHome" data-i18n="tab_home">Tap</button>
+      <button class="tabBtn active" id="tabHome" data-i18n="tab_home">TAP</button>
       <button class="tabBtn" id="tabCabinet" data-i18n="tab_account">Account</button>
-    </div>
-  </div>
-
-  <div class="modalBack" id="modalBack">
-    <div class="modal">
-      <div class="modalTitle" id="modalTitle">—</div>
-      <div class="modalText" id="modalText">—</div>
-      <div class="modalBtns">
-        <button class="btn danger" id="modalClose">OK</button>
-      </div>
     </div>
   </div>
 
@@ -644,17 +627,7 @@
     // =========================
     // CONFIG
     // =========================
-    const BOT_USERNAME = "hfufh4fu4bot"; // no @
-    const TAP_REWARD = 0.0001;           // +0.0001 USDT per tap
-    const FREE_TAPS = 10000;             // 10 000 free taps
-    const WITHDRAW_MIN = 20.0;
-
-    // Packs (UI only for now)
-    const PLANS_UI = [
-      { id:"newbie", deposit:10,  taps:100000, reward:0.001,  emoji:"🐣", ru:"Новичок", en:"Beginner", profitFixed: 20 },
-      { id:"pro",    deposit:50,  taps:100000, reward:0.0005, emoji:"🧠", ru:"Профи",   en:"Pro",      profitFixed: 100 },
-      { id:"whale",  deposit:100, taps:100000, reward:0.002,  emoji:"🐋", ru:"Кит",     en:"Whale",    profitFixed: null }
-    ];
+    const BOT_USERNAME = "hfufh4fu4bot"; // без @
 
     // =========================
     // I18N
@@ -664,73 +637,71 @@
         balance_label: "БАЛАНС",
         taps_left: "ОСТАЛОСЬ ТАПОВ",
         reward: "НАГРАДА",
-        top3: "ТОП 3",
         tab_invite: "Пригласить",
-        tab_home: "Tap",         // ✅ no translation
+        tab_home: "TAP",     // ✅ оставили латиницей
         tab_account: "Аккаунт",
         invite_title: "ПРИГЛАСИТЬ",
         invite_sub: "Приглашай друзей и зарабатывай 0.1 USDT за каждого приведённого друга.",
-        invite_sub2: "0.1 USDT начисляется после того, как реферал сделает 10 000 кликов и получит 1 USDT.",
+        invite_sub2: "0.1 USDT начисляется после того, как реферал сделает 10,000 тапов и заработает 1 USDT.",
         invited_count: "ПРИГЛАШЕНО",
         invite_bonus: "БОНУС",
         your_link: "ТВОЯ РЕФ-СЫЛКА",
         copy: "Копировать",
         ref_list: "РЕФЕРАЛЫ",
         account_title: "АККАУНТ",
-        account_sub: "Пакеты",
+        account_sub: "Данные с сервера",
         account_balance: "ТВОЙ БАЛАНС",
-        withdraw: "ВЫВОД",
-        wallet_address: "Адрес кошелька",
-        send_withdraw: "Отправить",
-        withdraw_note: "Запросы на вывод обрабатываются в течение 24 часов.",
-        profit: "Прибыль",
-        empty_top: "Пока нет данных",
-        no_refs: "Пока никто не перешёл",
-        hint: () => `🎁 <b>10 000 бесплатных тапов</b>`,
-        w_info: (bal) => `Доступно: <b>${bal} USDT</b><br>Минимальный вывод: <b>${WITHDRAW_MIN.toFixed(0)} USDT</b>`,
-        w_min_err: `Минимальная сумма вывода — ${WITHDRAW_MIN.toFixed(0)} USDT.`,
-        w_addr_err: "Вставь адрес кошелька.",
-        w_amt_err: "Введи сумму вывода.",
-        w_amt_bad: "Некорректная сумма.",
-        w_amt_over: "Недостаточно средств.",
-        w_processing_title: "Заявка принята",
-        w_processing_text: "Статус: в обработке. Вывод может занять до 24 часов."
+        no_refs: "Пока никто не пришёл",
+        packages_title: "ПАКЕТЫ",
+        packages_sub: "Купи пакет, чтобы получить тапы и увеличить награду.",
+        buy: "Купить",
+        payment_title: "ОПЛАТА",
+        copy_address: "Скопировать адрес",
+        copy_amount: "Скопировать сумму",
+        check_payment: "Проверить оплату",
+        close: "Закрыть",
+        payment_note: "ВАЖНО: переводи точную сумму (10.xxxxxx). Сервер найдёт платёж по сумме.",
+        pay_created: "Инвойс создан. Переведи сумму на адрес ниже.",
+        paid_ok: "Оплата найдена ✅ Пакет выдан.",
+        not_paid: "Платёж пока не найден. Проверь позже.",
+        server_error: "Ошибка сервера",
+        tap_stats: "СТАТИСТИКА TAP",
+        hint: () => `🎁 <b>Рефералка работает через бота:</b><br><span class="muted">Человек должен открыть ссылку и нажать Start.</span>`
       },
       en: {
         balance_label: "BALANCE",
         taps_left: "TAPS LEFT",
         reward: "REWARD",
-        top3: "TOP 3",
         tab_invite: "Invite",
-        tab_home: "Tap",         // ✅ same
+        tab_home: "TAP",     // ✅ оставили латиницей
         tab_account: "Account",
         invite_title: "INVITE",
         invite_sub: "Invite friends and earn 0.1 USDT for each invited friend.",
-        invite_sub2: "0.1 USDT is credited after your referral makes 10,000 clicks and earns 1 USDT.",
+        invite_sub2: "0.1 USDT is credited after referral makes 10,000 taps and earns 1 USDT.",
         invited_count: "INVITED",
         invite_bonus: "BONUS",
         your_link: "YOUR REF LINK",
         copy: "Copy",
         ref_list: "REFERRALS",
         account_title: "ACCOUNT",
-        account_sub: "Packages",
+        account_sub: "Server data",
         account_balance: "YOUR BALANCE",
-        withdraw: "WITHDRAW",
-        wallet_address: "Wallet address",
-        send_withdraw: "Send",
-        withdraw_note: "Withdrawal requests are processed within 24 hours.",
-        profit: "Profit",
-        empty_top: "No data yet",
         no_refs: "No one joined yet",
-        hint: () => `🎁 <b>10,000 free taps</b>`,
-        w_info: (bal) => `Available: <b>${bal} USDT</b><br>Minimum withdraw: <b>${WITHDRAW_MIN.toFixed(0)} USDT</b>`,
-        w_min_err: `Minimum withdraw is ${WITHDRAW_MIN.toFixed(0)} USDT.`,
-        w_addr_err: "Enter wallet address.",
-        w_amt_err: "Enter withdraw amount.",
-        w_amt_bad: "Invalid amount.",
-        w_amt_over: "Insufficient balance.",
-        w_processing_title: "Request submitted",
-        w_processing_text: "Status: processing. Withdrawal may take up to 24 hours."
+        packages_title: "PACKAGES",
+        packages_sub: "Buy a package to get taps and higher reward.",
+        buy: "Buy",
+        payment_title: "PAYMENT",
+        copy_address: "Copy address",
+        copy_amount: "Copy amount",
+        check_payment: "Check payment",
+        close: "Close",
+        payment_note: "IMPORTANT: send the exact amount (10.xxxxxx). The server matches payment by amount.",
+        pay_created: "Invoice created. Send the amount to the address below.",
+        paid_ok: "Payment found ✅ Package granted.",
+        not_paid: "Payment not found yet. Check again later.",
+        server_error: "Server error",
+        tap_stats: "TAP STATS",
+        hint: () => `🎁 <b>Referral works via bot:</b><br><span class="muted">User must open link and press Start.</span>`
       }
     };
 
@@ -740,34 +711,11 @@
     const tg = window.Telegram?.WebApp;
     if (tg) { tg.ready(); tg.expand(); }
 
-    document.addEventListener("gesturestart", (e) => e.preventDefault(), { passive:false });
-    document.addEventListener("gesturechange", (e) => e.preventDefault(), { passive:false });
-    document.addEventListener("gestureend", (e) => e.preventDefault(), { passive:false });
-    document.addEventListener("dblclick", (e) => e.preventDefault(), { passive:false });
-
-    let lastTouchEnd = 0;
-    document.addEventListener("touchend", (e) => {
-      const now = Date.now();
-      if (now - lastTouchEnd <= 250) e.preventDefault();
-      lastTouchEnd = now;
-    }, { passive:false });
-
-    // =========================
-    // Local Storage helpers
-    // =========================
-    const LS = {
-      keyUser: (userId) => `usdtclicker:user:${userId}`,
-      keyLB:  () => `usdtclicker:leaderboard`,
-      readJSON: (key, fallback) => {
-        try{
-          const raw = localStorage.getItem(key);
-          return raw ? JSON.parse(raw) : fallback;
-        }catch(e){ return fallback; }
-      },
-      writeJSON: (key, obj) => {
-        try{ localStorage.setItem(key, JSON.stringify(obj)); }catch(e){}
-      }
-    };
+    function detectLang(){
+      const tgLang = (tg?.initDataUnsafe?.user?.language_code || "").toLowerCase();
+      if (tgLang.startsWith("en")) return "en";
+      return "ru";
+    }
 
     // =========================
     // State
@@ -776,21 +724,49 @@
       lang: "ru",
       userId: null,
       fullName: "User",
+
       balance: 0,
-      tapsLeft: FREE_TAPS,
-      reward: TAP_REWARD
+
+      tapsLeft: 0,
+      tapsTotal: 0,
+      tapReward: 0,
+      capRemaining: 0,
+
+      referrals: [],
+      invitedCount: 0,
+      bonusTotal: 0,
+
+      packages: null,   // { "1":{...}, ... }
+      payAddress: "",
+      payNetwork: "",
+      currentInvoice: null, // {id, amount_usdt, address, ...}
+      isTapping: false,
+      tapCooldownUntil: 0
     };
 
     function fmtBalance(x){
+      x = Number(x || 0);
+      if (!Number.isFinite(x)) x = 0;
       if (x < 1) return x.toFixed(4);
       if (x < 100) return x.toFixed(3);
       return x.toFixed(2);
     }
 
-    function detectLang(){
-      const tgLang = (tg?.initDataUnsafe?.user?.language_code || "").toLowerCase();
-      if (tgLang.startsWith("en")) return "en";
-      return "ru";
+    function fmtReward(x){
+      x = Number(x || 0);
+      if (!Number.isFinite(x)) x = 0;
+      if (x < 1) return x.toFixed(4);
+      return x.toFixed(3);
+    }
+
+    function escapeHtml(s){
+      return String(s || "").replace(/[&<>"']/g, (c) => ({
+        "&":"&amp;",
+        "<":"&lt;",
+        ">":"&gt;",
+        '"':"&quot;",
+        "'":"&#039;"
+      }[c]));
     }
 
     function initFromTelegram(){
@@ -799,9 +775,8 @@
         state.userId = u.id;
         const first = (u.first_name || "").trim();
         const last  = (u.last_name || "").trim();
-        state.fullName = (first + " " + last).trim() || "User";
+        state.fullName = (first + " " + last).trim() || (u.username ? `@${u.username}` : "User");
       } else {
-        // browser fallback
         state.userId = 999001;
         state.fullName = "Browser User";
       }
@@ -809,40 +784,48 @@
       state.lang = detectLang();
     }
 
-    function loadUserLocal(){
-      const saved = LS.readJSON(LS.keyUser(state.userId), null);
-      if (saved){
-        state.balance = Number(saved.balance || 0);
-        state.tapsLeft = Number(saved.tapsLeft ?? FREE_TAPS);
-      } else {
-        state.balance = 0;
-        state.tapsLeft = FREE_TAPS;
-        saveUserLocal();
-      }
-    }
-
-    function saveUserLocal(){
-      LS.writeJSON(LS.keyUser(state.userId), {
-        balance: state.balance,
-        tapsLeft: state.tapsLeft
+    async function apiPost(path, payload){
+      const resp = await fetch(path, {
+        method: "POST",
+        headers: { "Content-Type":"application/json" },
+        body: JSON.stringify(payload || {})
       });
+      const text = await resp.text();
+      if (!resp.ok) throw new Error(text);
+      try { return JSON.parse(text); } catch(e){ return {}; }
     }
 
-    function updateLeaderboardOnTap(){
-      const lb = LS.readJSON(LS.keyLB(), {});
-      if (!lb[String(state.userId)]){
-        lb[String(state.userId)] = { user_id: state.userId, name: state.fullName, taps: 0 };
+    async function apiGet(path){
+      const resp = await fetch(path);
+      const text = await resp.text();
+      if (!resp.ok) throw new Error(text);
+      try { return JSON.parse(text); } catch(e){ return {}; }
+    }
+
+    function getRefLink(){
+      if (!state.userId) return "";
+      return `https://t.me/${BOT_USERNAME}?start=ref_${state.userId}`;
+    }
+
+    function showToast(title, message){
+      if (tg?.showPopup){
+        tg.showPopup({
+          title: title || "Info",
+          message: message || "",
+          buttons: [{type:"ok"}]
+        });
+        return;
       }
-      lb[String(state.userId)].name = state.fullName;
-      lb[String(state.userId)].taps = Number(lb[String(state.userId)].taps || 0) + 1;
-      LS.writeJSON(LS.keyLB(), lb);
+      alert((title ? title + "\n" : "") + (message || ""));
     }
 
-    function getTop3(){
-      const lb = LS.readJSON(LS.keyLB(), {});
-      const arr = Object.values(lb || {});
-      arr.sort((a,b)=> (Number(b.taps||0) - Number(a.taps||0)));
-      return arr.slice(0,3);
+    async function copyText(text){
+      try{
+        await navigator.clipboard.writeText(text);
+        return true;
+      }catch(e){
+        return false;
+      }
     }
 
     // =========================
@@ -871,26 +854,67 @@
     tabCabinet.addEventListener("click", () => showScreen("cabinet"));
 
     // =========================
-    // Modal
+    // Render
     // =========================
-    const modalBack = document.getElementById("modalBack");
-    const modalTitle = document.getElementById("modalTitle");
-    const modalText  = document.getElementById("modalText");
-    const modalClose = document.getElementById("modalClose");
+    function renderHome(){
+      document.getElementById("balanceVal").textContent = fmtBalance(state.balance);
 
-    function openModal(title, text){
-      modalTitle.textContent = title;
-      modalText.textContent = text;
-      modalBack.classList.add("active");
+      document.getElementById("tapsLeft").textContent =
+        Number.isFinite(Number(state.tapsLeft)) ? String(state.tapsLeft) : "—";
+
+      document.getElementById("rewardVal").textContent = fmtReward(state.tapReward || 0);
+
+      const r = Number(state.tapReward || 0);
+      document.getElementById("planLine").textContent = r > 0
+        ? `+${fmtReward(r)} USDT / TAP`
+        : (state.lang === "ru" ? "Купи пакет, чтобы начать" : "Buy a package to start");
+
+      document.getElementById("hintBox").innerHTML = I18N[state.lang].hint();
+
+      renderPackages();
     }
-    function closeModal(){ modalBack.classList.remove("active"); }
 
-    modalClose.addEventListener("click", closeModal);
-    modalBack.addEventListener("click", (e)=>{ if(e.target === modalBack) closeModal(); });
+    function renderInvite(){
+      const input = document.getElementById("refLink");
+      input.value = getRefLink();
 
-    // =========================
-    // Language
-    // =========================
+      document.getElementById("invitedCount").textContent = String(state.invitedCount || 0);
+      document.getElementById("inviteBonusTotal").textContent = Number(state.bonusTotal || 0).toFixed(4);
+
+      const list = document.getElementById("refList");
+      list.innerHTML = "";
+
+      if (!state.referrals || !state.referrals.length){
+        const empty = document.createElement("div");
+        empty.className = "item";
+        empty.innerHTML = `<span class="muted">${I18N[state.lang].no_refs}</span><span class="muted">—</span>`;
+        list.appendChild(empty);
+        return;
+      }
+
+      state.referrals.forEach((r)=>{
+        const name = (r.name || "User").toString();
+        const reward = Number(r.reward_usdt || 0).toFixed(2);
+        const it = document.createElement("div");
+        it.className = "item";
+        it.innerHTML = `<span>${escapeHtml(name)}</span><span class="muted">+${reward} USDT</span>`;
+        list.appendChild(it);
+      });
+    }
+
+    function renderCabinet(statusText){
+      document.getElementById("cabBalance").textContent = fmtBalance(state.balance);
+      document.getElementById("srvUserId").textContent = String(state.userId || "—");
+      document.getElementById("srvStatus").textContent = statusText || "ok";
+
+      const line = document.getElementById("tapStatsLine");
+      line.innerHTML =
+        `taps_total: <b>${state.tapsTotal ?? "—"}</b><br>` +
+        `taps_left: <b>${state.tapsLeft ?? "—"}</b><br>` +
+        `tap_reward: <b>${fmtReward(state.tapReward || 0)}</b><br>` +
+        `cap_remaining: <b>${fmtBalance(state.capRemaining || 0)}</b>`;
+    }
+
     function setLang(lang){
       state.lang = lang;
 
@@ -903,293 +927,318 @@
         if (typeof val === "string") el.textContent = val;
       });
 
-      document.querySelectorAll("[data-i18n-ph]").forEach(el=>{
-        const key = el.getAttribute("data-i18n-ph");
-        const val = I18N[lang][key];
-        if (typeof val === "string") el.setAttribute("placeholder", val);
-      });
-
-      render();
-      renderPlans();
-      renderTop3();
-      renderInviteStub();
+      renderHome();
+      renderInvite();
+      renderCabinet("ok");
     }
 
     document.getElementById("btnRU").addEventListener("click", ()=>setLang("ru"));
     document.getElementById("btnEN").addEventListener("click", ()=>setLang("en"));
 
     // =========================
-    // Render
+    // PACKAGES + PAYMENT
     // =========================
-    function render(){
-      document.getElementById("balanceVal").textContent = fmtBalance(state.balance);
-      document.getElementById("tapsLeft").textContent = state.tapsLeft;
-      document.getElementById("rewardVal").textContent = state.reward.toFixed(4);
+    const pkgGrid = document.getElementById("pkgGrid");
+    const payPanel = document.getElementById("payPanel");
+    const payInfoLine = document.getElementById("payInfoLine");
+    const payAddressInput = document.getElementById("payAddress");
+    const payAmountInput = document.getElementById("payAmount");
+    const copyAddressBtn = document.getElementById("copyAddressBtn");
+    const copyAmountBtn = document.getElementById("copyAmountBtn");
+    const checkPayBtn = document.getElementById("checkPayBtn");
+    const closePayBtn = document.getElementById("closePayBtn");
 
-      // ✅ TAP word no translation
-      document.getElementById("planLine").textContent = `+${state.reward.toFixed(4)} USDT / TAP`;
-
-      // ✅ bottom hint only 1 line
-      document.getElementById("hintBox").innerHTML = I18N[state.lang].hint();
-
-      document.getElementById("cabBalance").textContent = fmtBalance(state.balance);
-
-      const wi = document.getElementById("withdrawInfo");
-      wi.innerHTML = I18N[state.lang].w_info(fmtBalance(state.balance));
-      document.getElementById("withdrawBtn").disabled = state.balance < WITHDRAW_MIN;
-    }
-
-    function renderTop3(){
-      const top = document.getElementById("topList");
-      top.innerHTML = "";
-      const list = getTop3();
-
-      if (!list.length){
-        const it = document.createElement("div");
-        it.className = "item";
-        it.innerHTML = `<span class="muted">${I18N[state.lang].empty_top}</span><span class="muted">—</span>`;
-        top.appendChild(it);
+    function renderPackages(){
+      if (!state.packages){
+        pkgGrid.innerHTML = `<div class="item"><span class="muted">Loading…</span><span class="muted">—</span></div>`;
         return;
       }
 
-      list.forEach((p, idx)=>{
-        const name = (p.name || "—").trim();
-        const it = document.createElement("div");
-        it.className = "item";
-        it.innerHTML = `<span>#${idx+1} ${escapeHtml(name)}</span><span class="muted">${(p.taps||0)} taps</span>`;
-        top.appendChild(it);
-      });
-    }
+      // state.packages — объект вида {"1":{...},"2":{...}}
+      const keys = Object.keys(state.packages).sort((a,b)=>Number(a)-Number(b));
+      pkgGrid.innerHTML = "";
 
-    function renderInviteStub(){
-      document.getElementById("invitedCount").textContent = "0";
-      document.getElementById("inviteBonusTotal").textContent = "0.0000";
+      keys.forEach((k)=>{
+        const p = state.packages[k];
+        const id = Number(k);
 
-      const list = document.getElementById("refList");
-      list.innerHTML = "";
-      const empty = document.createElement("div");
-      empty.className = "item";
-      empty.innerHTML = `<span class="muted">${I18N[state.lang].no_refs}</span><span class="muted">—</span>`;
-      list.appendChild(empty);
+        const name = p?.name ?? `Package ${id}`;
+        const price = Number(p?.price ?? 0);
+        const taps = Number(p?.taps ?? 0);
+        const reward = Number(p?.reward ?? 0);
+        const cap = Number(p?.cap ?? 0);
 
-      document.getElementById("refLink").value = getRefLink();
-    }
+        const wrap = document.createElement("div");
+        wrap.className = "pkg";
 
-    function renderPlans(){
-      const wrap = document.getElementById("plans");
-      wrap.innerHTML = "";
-
-      PLANS_UI.forEach(p => {
-        const title = (state.lang==="ru") ? `${p.emoji} ${p.ru}` : `${p.emoji} ${p.en}`;
-
-        let profit = p.profitFixed;
-        if (profit == null){
-          profit = (p.taps * p.reward);
-        }
-
-        const card = document.createElement("div");
-        card.className = "plan";
-        card.innerHTML = `
-          <div class="planTop">
+        wrap.innerHTML = `
+          <div class="pkgTop">
             <div>
-              <div class="planTitle">${title}</div>
-              <div class="planDesc">
-                ${state.lang==="ru"
-                  ? `Пополнение: <b>${p.deposit} USDT</b><br>Тапов: <b>${p.taps.toLocaleString()}</b><br>Награда: <b>${p.reward}</b> USDT / TAP`
-                  : `Deposit: <b>${p.deposit} USDT</b><br>Taps: <b>${p.taps.toLocaleString()}</b><br>Reward: <b>${p.reward}</b> USDT / TAP`
-                }
+              <div class="pkgName">${escapeHtml(name)}</div>
+              <div class="pkgMeta">
+                taps: <b>${taps.toLocaleString()}</b><br>
+                reward: <b>${fmtReward(reward)}</b> USDT / TAP<br>
+                max profit: <b>${fmtBalance(cap)}</b> USDT
               </div>
             </div>
-            <div class="planRight">
-              ${I18N[state.lang].profit}<br>
-              ${Number(profit).toFixed(0)} USDT
-            </div>
+            <div class="pkgPrice">${fmtBalance(price)} USDT</div>
           </div>
-          <div class="field" style="margin-top:12px">
-            <button class="btn" data-plan="${p.id}">
-              ${state.lang==="ru" ? "Выбрать пакет" : "Select package"}
-            </button>
+          <div class="pkgActions">
+            <button class="btn ok" data-buy-id="${id}">${I18N[state.lang].buy}</button>
           </div>
         `;
-        wrap.appendChild(card);
+
+        pkgGrid.appendChild(wrap);
       });
 
-      wrap.querySelectorAll("button[data-plan]").forEach(btn=>{
-        btn.addEventListener("click", ()=>{
-          alert(state.lang==="ru"
-            ? "Пакеты подключим позже (когда вернём бэкенд). Сейчас добиваем UI."
-            : "We will connect packages later (when backend is back). UI first."
-          );
+      pkgGrid.querySelectorAll("[data-buy-id]").forEach(btn=>{
+        btn.addEventListener("click", async ()=>{
+          const id = Number(btn.getAttribute("data-buy-id"));
+          await createInvoice(id);
         });
       });
     }
 
+    function openPayPanel(invoice){
+      state.currentInvoice = invoice;
+
+      payPanel.style.display = "block";
+      payInfoLine.textContent = I18N[state.lang].pay_created;
+
+      payAddressInput.value = invoice.address || state.payAddress || "";
+      payAmountInput.value = String(invoice.amount_usdt ?? "");
+
+      // small scroll to panel
+      payPanel.scrollIntoView({behavior:"smooth", block:"start"});
+    }
+
+    function closePayPanel(){
+      state.currentInvoice = null;
+      payPanel.style.display = "none";
+    }
+
+    closePayBtn.addEventListener("click", closePayPanel);
+
+    copyAddressBtn.addEventListener("click", async ()=>{
+      const ok = await copyText(payAddressInput.value);
+      showToast(ok ? "OK" : "Copy", ok ? "Address copied ✅" : "Copy failed");
+    });
+
+    copyAmountBtn.addEventListener("click", async ()=>{
+      const ok = await copyText(payAmountInput.value);
+      showToast(ok ? "OK" : "Copy", ok ? "Amount copied ✅" : "Copy failed");
+    });
+
+    async function createInvoice(packageId){
+      if (!state.userId){
+        showToast("Error", "No userId");
+        return;
+      }
+      try{
+        const res = await apiPost("/api/payments/create", {
+          tg_id: state.userId,
+          package_id: packageId
+        });
+
+        if (res && res.ok && res.invoice){
+          openPayPanel(res.invoice);
+        } else {
+          showToast("Error", "Bad response");
+        }
+      }catch(e){
+        showToast("Error", I18N[state.lang].server_error);
+        console.log(e);
+      }
+    }
+
+    checkPayBtn.addEventListener("click", async ()=>{
+      if (!state.currentInvoice?.id){
+        showToast("Error", "No invoice");
+        return;
+      }
+      try{
+        const res = await apiPost("/api/payments/check", {
+          tg_id: state.userId,
+          invoice_id: state.currentInvoice.id
+        });
+
+        if (res && res.ok){
+          if (res.paid){
+            showToast("OK", I18N[state.lang].paid_ok);
+            closePayPanel();
+            await syncWithServer(); // подтянем новые taps/reward
+            showScreen("home");
+          } else {
+            showToast("Info", I18N[state.lang].not_paid);
+          }
+        } else {
+          showToast("Error", I18N[state.lang].server_error);
+        }
+      }catch(e){
+        showToast("Error", I18N[state.lang].server_error);
+        console.log(e);
+      }
+    });
+
     // =========================
-    // Tap logic (local)
+    // Server sync
+    // =========================
+    async function syncWithServer(){
+      // 0) packages
+      try{
+        const p = await apiGet("/api/packages");
+        if (p && p.ok){
+          state.packages = p.packages || null;
+          state.payAddress = p.address || "";
+          state.payNetwork = p.network || "";
+        }
+      }catch(e){
+        // ignore
+      }
+
+      // 1) upsert себя
+      try{
+        await apiPost("/api/user/upsert", { tg_id: state.userId });
+      }catch(e){
+        console.log("upsert failed:", e);
+      }
+
+      // 2) user data
+      try{
+        const me = await apiGet(`/api/user/${state.userId}`);
+        if (me && me.ok){
+          state.balance = Number(me.balance?.balance_usdt || 0);
+
+          state.tapsLeft = Number(me.taps?.taps_available ?? 0);
+          state.tapsTotal = Number(me.taps?.taps_total ?? 0);
+          state.tapReward = Number(me.taps?.tap_reward ?? 0);
+          state.capRemaining = Number(me.taps?.earn_cap_remaining ?? 0);
+
+          renderHome();
+          renderCabinet("ok");
+        } else {
+          renderCabinet("user not found");
+        }
+      }catch(e){
+        console.log("get user failed:", e);
+        renderCabinet("server error");
+      }
+
+      // 3) referrals (если endpoint есть — отлично, если нет — просто тишина)
+      try{
+        const r = await apiGet(`/api/referrals/${state.userId}`);
+        if (r && r.ok){
+          state.referrals = Array.isArray(r.referrals) ? r.referrals : [];
+          state.invitedCount = Number(r.invited_count || 0);
+          state.bonusTotal = Number(r.bonus_total || 0);
+          renderInvite();
+        }
+      }catch(e){
+        // ignore
+      }
+    }
+
+    // =========================
+    // Copy link button
+    // =========================
+    document.getElementById("copyRef").addEventListener("click", async ()=>{
+      const link = getRefLink();
+      const input = document.getElementById("refLink");
+      input.value = link;
+
+      let ok = await copyText(link);
+      if (!ok){
+        input.select();
+        try { document.execCommand("copy"); ok = true; } catch(e){}
+      }
+
+      showToast(state.lang === "ru" ? "Готово" : "Done", ok ? "✅" : "❌");
+    });
+
+    // =========================
+    // Tap logic (REAL TAP)
     // =========================
     const coin = document.getElementById("coin");
 
-    function spawnPlus(e){
-      const rect = coin.getBoundingClientRect();
-      const clientX = (e.touches ? e.touches[0].clientX : e.clientX);
-      const clientY = (e.touches ? e.touches[0].clientY : e.clientY);
-      const x = clientX - rect.left;
-      const y = clientY - rect.top;
-
+    function spawnPlusText(x, y, text){
       const plus = document.createElement("div");
       plus.className = "plus";
       plus.style.left = x + "px";
       plus.style.top = y + "px";
-      plus.textContent = "+" + state.reward.toFixed(4);
+      plus.textContent = text;
       coin.appendChild(plus);
       setTimeout(()=>plus.remove(), 900);
     }
 
-    let tapLock = false;
-    function tap(e){
+    function getLocalXY(e){
+      const rect = coin.getBoundingClientRect();
+      const clientX = (e.touches ? e.touches[0].clientX : e.clientX);
+      const clientY = (e.touches ? e.touches[0].clientY : e.clientY);
+      return { x: clientX - rect.left, y: clientY - rect.top };
+    }
+
+    async function doTap(e){
       e.preventDefault();
-      if (tapLock) return;
-      tapLock = true;
+
+      const now = Date.now();
+      if (now < state.tapCooldownUntil) return;
+      state.tapCooldownUntil = now + 120;
+
+      const {x,y} = getLocalXY(e);
+
+      // если taps закончились
+      if ((state.tapsLeft ?? 0) <= 0 || (state.tapReward ?? 0) <= 0 || (state.capRemaining ?? 0) <= 0){
+        spawnPlusText(x, y, "+0.0000");
+        return;
+      }
+
+      // локальная анимация сразу
+      spawnPlusText(x, y, "+" + fmtReward(state.tapReward || 0));
+
+      // отправляем на сервер
+      if (state.isTapping) return;
+      state.isTapping = true;
 
       try{
-        if (state.tapsLeft <= 0){
-          openModal(
-            state.lang==="ru" ? "Тапы закончились" : "No taps left",
-            state.lang==="ru"
-              ? "Бесплатные тапы закончились. Пакеты подключим позже."
-              : "Free taps are over. Packages will be connected later."
-          );
-          return;
+        const res = await apiPost("/api/tap", { tg_id: state.userId, taps: 1 });
+        if (res && res.ok){
+          state.balance = Number(res.balance_usdt ?? state.balance ?? 0);
+          state.tapsLeft = Number(res.taps_available ?? state.tapsLeft ?? 0);
+          state.tapsTotal = Number(res.taps_total ?? state.tapsTotal ?? 0);
+          state.tapReward = Number(res.tap_reward ?? state.tapReward ?? 0);
+          state.capRemaining = Number(res.earn_cap_remaining ?? state.capRemaining ?? 0);
+
+          renderHome();
+          renderCabinet("ok");
         }
-
-        state.tapsLeft -= 1;
-        state.balance = Number(state.balance) + TAP_REWARD;
-
-        state.balance = Math.round(state.balance * 10000) / 10000;
-
-        updateLeaderboardOnTap();
-        saveUserLocal();
-
-        spawnPlus(e);
-        render();
-        renderTop3();
-      } finally {
-        tapLock = false;
+      }catch(err){
+        console.log(err);
+      }finally{
+        state.isTapping = false;
       }
     }
 
-    coin.addEventListener("pointerdown", tap);
-    coin.addEventListener("touchstart", tap, { passive:false });
+    coin.addEventListener("pointerdown", doTap);
+    coin.addEventListener("touchstart", doTap, { passive:false });
 
     // =========================
-    // Withdraw logic (local)
-    // =========================
-    const wAddr = document.getElementById("withdrawAddr");
-    const wAmt = document.getElementById("withdrawAmount");
-    const wMax = document.getElementById("withdrawMax");
-    const wErr = document.getElementById("withdrawError");
-    const wBtn = document.getElementById("withdrawBtn");
-
-    function showWithdrawError(msg){
-      wErr.style.display = "block";
-      wErr.classList.add("error");
-      wErr.textContent = msg;
-    }
-    function clearWithdrawError(){
-      wErr.style.display = "none";
-      wErr.textContent = "";
-    }
-
-    wMax.addEventListener("click", ()=>{
-      wAmt.value = String(Math.floor(state.balance * 10000) / 10000);
-      clearWithdrawError();
-    });
-
-    wBtn.addEventListener("click", ()=>{
-      clearWithdrawError();
-
-      const addr = (wAddr.value || "").trim();
-      if (!addr){
-        showWithdrawError(I18N[state.lang].w_addr_err);
-        return;
-      }
-
-      const raw = (wAmt.value || "").trim().replace(",", ".");
-      if (!raw){
-        showWithdrawError(I18N[state.lang].w_amt_err);
-        return;
-      }
-
-      const amount = Number(raw);
-      if (!Number.isFinite(amount) || amount <= 0){
-        showWithdrawError(I18N[state.lang].w_amt_bad);
-        return;
-      }
-
-      if (amount < WITHDRAW_MIN){
-        showWithdrawError(I18N[state.lang].w_min_err);
-        return;
-      }
-
-      if (amount > state.balance + 1e-12){
-        showWithdrawError(I18N[state.lang].w_amt_over);
-        return;
-      }
-
-      state.balance = Number(state.balance - amount);
-      state.balance = Math.max(0, Math.round(state.balance * 10000) / 10000);
-
-      saveUserLocal();
-      render();
-
-      wAmt.value = "";
-      openModal(I18N[state.lang].w_processing_title, I18N[state.lang].w_processing_text);
-    });
-
-    // =========================
-    // Referral link (stub)
-    // =========================
-    function getRefLink(){
-      if (!state.userId) return "";
-      return `https://t.me/${BOT_USERNAME}?startapp=ref_${state.userId}`;
-    }
-
-    document.getElementById("copyRef").addEventListener("click", ()=>{
-      const link = document.getElementById("refLink").value;
-      if (!link) return;
-      try{ navigator.clipboard.writeText(link); }catch(e){}
-    });
-
-    // =========================
-    // Logo fix
+    // Logo cache bust
     // =========================
     const logoImg = document.getElementById("logoImg");
     logoImg.src = `/static/logo.png?v=${Date.now()}`;
-
     logoImg.addEventListener("error", ()=>{
       const inner = document.getElementById("coinInner");
       inner.innerHTML = `<div style="font-weight:900; letter-spacing:.08em; color:#dff6ff">USDT</div>`;
     });
 
     // =========================
-    // Utils
-    // =========================
-    function escapeHtml(s){
-      return String(s || "").replace(/[&<>"']/g, (c) => ({
-        "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"
-      }[c]));
-    }
-
-    // =========================
-    // Boot
+    // BOOT
     // =========================
     (function boot(){
       initFromTelegram();
-      loadUserLocal();
       setLang(state.lang);
-      renderTop3();
-      renderInviteStub();
-      renderPlans();
+      showScreen("home");
+      syncWithServer();
     })();
   </script>
 </body>
