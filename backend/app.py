@@ -1,4 +1,4 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
@@ -36,6 +36,7 @@ app.mount("/static", StaticFiles(directory=WEBAPP_DIR), name="static")
 
 # ---------------- ENV ----------------
 DB_PATH = os.getenv("DB_PATH", os.path.join(BASE_DIR, "data.db"))
+
 TRONGRID_API_KEY = os.getenv("TRONGRID_API_KEY", "").strip()
 TRON_RECEIVE_ADDRESS = os.getenv("TRON_RECEIVE_ADDRESS", "").strip()
 TRC20_USDT_CONTRACT = os.getenv(
@@ -49,6 +50,11 @@ PAYMENT_TIME_SLOP_SEC = int(os.getenv("PAYMENT_TIME_SLOP_SEC", "120"))
 # Допуск по переплате (чтобы “+газ” не ломал)
 MAX_OVERPAY = float(os.getenv("MAX_OVERPAY", "1000"))
 
+# ---------------- WELCOME BONUS ----------------
+WELCOME_TAPS = int(os.getenv("WELCOME_TAPS", "10000"))
+WELCOME_REWARD = float(os.getenv("WELCOME_REWARD", "0.0001"))
+WELCOME_CAP = float(os.getenv("WELCOME_CAP", "1.0"))  # 1 USDT cap
+
 # ---------------- PACKAGES ----------------
 PACKAGES = {
     1: {"name": "Новичок", "price": 10.0,  "taps": 100_000, "reward": 0.0002, "cap": 20},
@@ -58,7 +64,8 @@ PACKAGES = {
 
 # ================== DB ==================
 def db():
-    conn = sqlite3.connect(DB_PATH, check_same_thread=False)
+    # timeout помогает при редких "database is locked"
+    conn = sqlite3.connect(DB_PATH, check_same_thread=False, timeout=20)
     conn.row_factory = sqlite3.Row
     return conn
 
@@ -76,8 +83,10 @@ def init_db():
     with closing(db()) as conn:
         cur = conn.cursor()
 
-        # 1) Создаем таблицы (новая схема)
         cur.executescript("""
+        PRAGMA journal_mode=WAL;
+        PRAGMA synchronous=NORMAL;
+
         CREATE TABLE IF NOT EXISTS users (
             tg_id INTEGER PRIMARY KEY
         );
@@ -110,7 +119,9 @@ def init_db():
         );
         """)
 
-        # 2) Если у invoices чего-то нет — добавим
+        # миграции/обеспечение колонок
+        ensure_column(cur, "users", "bonus_claimed", "INTEGER DEFAULT 0")
+
         ensure_column(cur, "invoices", "tg_id", "INTEGER")
         ensure_column(cur, "invoices", "package_id", "INTEGER")
         ensure_column(cur, "invoices", "base_price", "REAL")
@@ -119,22 +130,6 @@ def init_db():
         ensure_column(cur, "invoices", "txid", "TEXT")
         ensure_column(cur, "invoices", "created_at", "INTEGER")
         ensure_column(cur, "invoices", "paid_at", "INTEGER")
-
-        # 3) Миграция users: если вдруг существует таблица users без tg_id
-        cur.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='users'")
-        if cur.fetchone():
-            if not table_has_column(cur, "users", "tg_id"):
-                cur.executescript("""
-                ALTER TABLE users RENAME TO users_old;
-                CREATE TABLE users (tg_id INTEGER PRIMARY KEY);
-                """)
-                cur.execute("PRAGMA table_info(users_old)")
-                old_cols = [r["name"] for r in cur.fetchall()]
-                if "id" in old_cols:
-                    cur.execute("INSERT OR IGNORE INTO users(tg_id) SELECT id FROM users_old WHERE id IS NOT NULL")
-                elif "tg_id" in old_cols:
-                    cur.execute("INSERT OR IGNORE INTO users(tg_id) SELECT tg_id FROM users_old WHERE tg_id IS NOT NULL")
-                cur.execute("DROP TABLE users_old")
 
         conn.commit()
 
@@ -148,6 +143,45 @@ class CreateInvoiceIn(BaseModel):
 class CheckInvoiceIn(BaseModel):
     tg_id: int
     invoice_id: int
+
+# ================== HELPERS ==================
+def no_store(resp: Response):
+    # снижает шанс "пакеты не грузятся пока не ткнуть язык"
+    resp.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
+    resp.headers["Pragma"] = "no-cache"
+    resp.headers["Expires"] = "0"
+    return resp
+
+def ensure_user_and_bonus(tg_id: int):
+    """
+    Гарантируем:
+      - users row есть
+      - taps row есть
+      - welcome bonus начисляется 1 раз
+    """
+    with closing(db()) as conn:
+        cur = conn.cursor()
+        cur.execute("INSERT OR IGNORE INTO users (tg_id) VALUES (?)", (tg_id,))
+        cur.execute("INSERT OR IGNORE INTO taps (tg_id) VALUES (?)", (tg_id,))
+        conn.commit()
+
+        # проверим, был ли бонус
+        cur.execute("SELECT tg_id, IFNULL(bonus_claimed,0) AS bonus_claimed FROM users WHERE tg_id=? LIMIT 1", (tg_id,))
+        u = cur.fetchone()
+        claimed = int(u["bonus_claimed"]) if u else 0
+
+        if claimed == 0:
+            # начисляем бонус
+            cur.execute("""
+                UPDATE taps SET
+                  taps_available = taps_available + ?,
+                  tap_reward = CASE WHEN tap_reward <= 0 THEN ? ELSE tap_reward END,
+                  earn_cap_remaining = earn_cap_remaining + ?
+                WHERE tg_id=?
+            """, (WELCOME_TAPS, WELCOME_REWARD, WELCOME_CAP, tg_id))
+
+            cur.execute("UPDATE users SET bonus_claimed=1 WHERE tg_id=?", (tg_id,))
+            conn.commit()
 
 # ================== TRON ==================
 def tron_headers():
@@ -224,37 +258,39 @@ def health():
     }
 
 @app.get("/api/version")
-def version():
-    return {"ok": True, "build": BUILD}
+def version(resp: Response):
+    no_store(resp)
+    return {"ok": True, "build": BUILD, "ts": int(time.time())}
 
 @app.get("/api/packages")
-def packages():
+def packages(resp: Response):
+    no_store(resp)
     return {
         "ok": True,
         "packages": PACKAGES,
         "address": TRON_RECEIVE_ADDRESS,
         "network": "TRON (TRC20 USDT)",
         "rules": {
-            "min_amount": ">= package price",
+            "min_amount": ">= package price (AFTER exchange fee)",
             "time_slop_sec": PAYMENT_TIME_SLOP_SEC,
             "max_overpay": MAX_OVERPAY,
-        }
+        },
+        "ts": int(time.time())
     }
 
-# ✅ ВОТ ЭТО ГЛАВНОЕ: ОТДАЕМ ТАПЫ ДЛЯ UI
+# ✅ ТАПЫ ДЛЯ UI + WELCOME BONUS
 @app.get("/api/user/{tg_id}")
-def get_user(tg_id: int):
+def get_user(tg_id: int, resp: Response):
+    no_store(resp)
+
+    ensure_user_and_bonus(tg_id)
+
     with closing(db()) as conn:
         cur = conn.cursor()
-
-        # гарантируем записи
-        cur.execute("INSERT OR IGNORE INTO users (tg_id) VALUES (?)", (tg_id,))
-        cur.execute("INSERT OR IGNORE INTO taps (tg_id) VALUES (?)", (tg_id,))
-        conn.commit()
-
         cur.execute("""
             SELECT
                 u.tg_id as userId,
+                IFNULL(u.bonus_claimed, 0) as bonus_claimed,
                 IFNULL(t.taps_available, 0) as taps_left,
                 IFNULL(t.tap_reward, 0) as tap_reward,
                 IFNULL(t.earn_cap_remaining, 0) as cap_remaining
@@ -271,31 +307,64 @@ def get_user(tg_id: int):
             "taps_left": int(row["taps_left"]),
             "tap_reward": float(row["tap_reward"]),
             "cap_remaining": float(row["cap_remaining"]),
+            "bonus_claimed": int(row["bonus_claimed"]),
+            "ts": int(time.time())
         }
 
-# ✅ ДЕБАГ: проверка что реально записано в taps
+# ✅ ДЕБАГ: taps
 @app.get("/api/debug/taps/{tg_id}")
-def debug_taps(tg_id: int):
+def debug_taps(tg_id: int, resp: Response):
+    no_store(resp)
     with closing(db()) as conn:
         cur = conn.cursor()
         cur.execute("SELECT * FROM taps WHERE tg_id=? LIMIT 1", (tg_id,))
         r = cur.fetchone()
         return {"ok": True, "row": dict(r) if r else None}
 
+# ✅ ДЕБАГ: последние входящие USDT по TronGrid
+@app.get("/api/debug/trc20")
+def debug_trc20(resp: Response):
+    no_store(resp)
+    try:
+        txs = get_recent_trc20_transfers(limit=20)
+        out = []
+        for tx in txs:
+            try:
+                out.append({
+                    "txid": tx.get("transaction_id"),
+                    "value_usdt": int(tx.get("value", 0)) / 1_000_000,
+                    "ts": int(tx.get("block_timestamp", 0)) // 1000,
+                    "from": tx.get("from"),
+                    "to": tx.get("to"),
+                })
+            except Exception:
+                continue
+        return {
+            "ok": True,
+            "address": TRON_RECEIVE_ADDRESS,
+            "contract": TRC20_USDT_CONTRACT,
+            "count": len(out),
+            "last": out,
+            "ts": int(time.time())
+        }
+    except Exception as e:
+        return JSONResponse({"ok": False, "error": str(e)}, status_code=500)
+
 @app.post("/api/payments/create")
-def create_payment(data: CreateInvoiceIn):
+def create_payment(data: CreateInvoiceIn, resp: Response):
+    no_store(resp)
+
     if data.package_id not in PACKAGES:
         return JSONResponse({"error": "bad package"}, 400)
+
+    # гарантируем юзера + бонус (чтобы UI сразу видел free taps)
+    ensure_user_and_bonus(int(data.tg_id))
 
     pkg = PACKAGES[data.package_id]
     now = int(time.time())
 
     with closing(db()) as conn:
         cur = conn.cursor()
-
-        # гарантируем наличие пользователя
-        cur.execute("INSERT OR IGNORE INTO users (tg_id) VALUES (?)", (data.tg_id,))
-        cur.execute("INSERT OR IGNORE INTO taps (tg_id) VALUES (?)", (data.tg_id,))
 
         # unique_amount оставляем для совместимости с фронтом (как "рекомендованную")
         unique = round(float(pkg["price"]) + random.randint(1, 9999) / 1_000_000, 6)
@@ -304,7 +373,7 @@ def create_payment(data: CreateInvoiceIn):
             INSERT INTO invoices
             (tg_id, package_id, base_price, unique_amount, status, created_at)
             VALUES (?, ?, ?, ?, 'pending', ?)
-        """, (data.tg_id, data.package_id, float(pkg["price"]), unique, now))
+        """, (int(data.tg_id), int(data.package_id), float(pkg["price"]), unique, now))
         conn.commit()
 
         invoice_id = cur.lastrowid
@@ -313,24 +382,27 @@ def create_payment(data: CreateInvoiceIn):
             "ok": True,
             "invoice": {
                 "id": int(invoice_id),
-                "amount_usdt": unique,                  # рекомендованная сумма
-                "min_amount_usdt": float(pkg["price"]), # минимальная сумма
+                "amount_usdt": unique,                   # рекомендованная сумма
+                "min_amount_usdt": float(pkg["price"]),  # минимальная сумма
                 "address": TRON_RECEIVE_ADDRESS
-            }
+            },
+            "ts": int(time.time())
         }
 
 @app.post("/api/payments/check")
-def check_payment(data: CheckInvoiceIn):
+def check_payment(data: CheckInvoiceIn, resp: Response):
+    no_store(resp)
+
     with closing(db()) as conn:
         cur = conn.cursor()
 
-        cur.execute("SELECT * FROM invoices WHERE id=? AND tg_id=?", (data.invoice_id, data.tg_id))
+        cur.execute("SELECT * FROM invoices WHERE id=? AND tg_id=?", (int(data.invoice_id), int(data.tg_id)))
         inv = cur.fetchone()
         if not inv:
             return JSONResponse({"error": "invoice not found"}, 404)
 
-        if inv["status"] == "paid":
-            return {"ok": True, "paid": True, "txid": inv["txid"]}
+        if (inv["status"] or "") == "paid":
+            return {"ok": True, "paid": True, "txid": inv["txid"], "ts": int(time.time())}
 
         # base_price надежно
         base_price = float(inv["base_price"]) if inv["base_price"] is not None else 0.0
@@ -340,7 +412,7 @@ def check_payment(data: CheckInvoiceIn):
 
         found, txid, val, ts = find_payment_for_invoice(base_price, int(inv["created_at"]), conn)
         if not found:
-            return {"ok": True, "paid": False}
+            return {"ok": True, "paid": False, "ts": int(time.time())}
 
         # фиксируем tx
         cur.execute(
@@ -366,4 +438,4 @@ def check_payment(data: CheckInvoiceIn):
 
         conn.commit()
 
-        return {"ok": True, "paid": True, "txid": txid, "amount": val, "package": pkg}
+        return {"ok": True, "paid": True, "txid": txid, "amount": val, "package": pkg, "ts": int(time.time())}
