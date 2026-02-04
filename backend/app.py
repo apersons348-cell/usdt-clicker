@@ -10,6 +10,10 @@ from dotenv import load_dotenv
 load_dotenv()
 
 app = FastAPI(title="TG Clicker API")
+BUILD = "9df0383"
+@app.get("/api/version")
+def version():
+    return {"ok": True, "build": BUILD}
 
 # ---------------- CORS ----------------
 app.add_middleware(
