@@ -1,1 +1,1 @@
-from backend.app import app  # noqa
+from backend.app import app
