@@ -210,6 +210,11 @@ def health():
         "db": DB_PATH,
         "tron_ready": bool(TRON_RECEIVE_ADDRESS),
     }
+BUILD = "v1"
+
+@app.get("/api/version")
+def version():
+    return {"ok": True, "build": BUILD}
 
 @app.get("/api/packages")
 def packages():
