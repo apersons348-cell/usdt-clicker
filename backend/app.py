@@ -17,7 +17,7 @@ load_dotenv()
 app = FastAPI(title="TG Clicker API")
 
 # Build marker (чтобы понимать, что прод реально обновился)
-BUILD = os.getenv("BUILD", "v1")
+BUILD = os.getenv("RENDER_GIT_COMMIT") or os.getenv("BUILD", "local")
 
 # ---------------- CORS ----------------
 app.add_middleware(
