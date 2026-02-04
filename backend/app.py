@@ -3,9 +3,12 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
-import os, sqlite3, json, time, random, requests
+import os
+import sqlite3
+import time
+import random
+import requests
 from contextlib import closing
-from typing import Optional
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -35,14 +38,13 @@ TRC20_USDT_CONTRACT = os.getenv(
     "TRC20_USDT_CONTRACT",
     "TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t"
 )
-
 TRONGRID_BASE = "https://api.trongrid.io"
 
 # ---------------- PACKAGES ----------------
 PACKAGES = {
     1: {"name": "Новичок", "price": 10.0, "taps": 100_000, "reward": 0.0002, "cap": 20},
     2: {"name": "Профи",   "price": 50.0, "taps": 100_000, "reward": 0.001,  "cap": 100},
-    3: {"name": "VIP",     "price": 100.0,"taps": 100_000, "reward": 0.002,  "cap": 200},
+    3: {"name": "VIP",     "price": 100.0, "taps": 100_000, "reward": 0.002,  "cap": 200},
 }
 
 # ---------------- DB ----------------
@@ -51,36 +53,77 @@ def db():
     conn.row_factory = sqlite3.Row
     return conn
 
+def _table_columns(cur, table: str) -> set[str]:
+    cur.execute(f"PRAGMA table_info({table})")
+    return {row[1] for row in cur.fetchall()}  # row[1] = column name
+
 def init_db():
+    """
+    Делает таблицы + миграцию, если БД уже существовала с другой схемой.
+    Главная цель: гарантировать users.tg_id.
+    """
     with closing(db()) as conn:
         cur = conn.cursor()
 
-        cur.executescript("""
-        CREATE TABLE IF NOT EXISTS users (
-            tg_id INTEGER PRIMARY KEY
-        );
+        # 1) Создаём таблицы (если их нет)
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS users (
+                tg_id INTEGER PRIMARY KEY
+            )
+        """)
 
-        CREATE TABLE IF NOT EXISTS taps (
-            tg_id INTEGER PRIMARY KEY,
-            taps_available INTEGER DEFAULT 0,
-            tap_reward REAL DEFAULT 0,
-            earn_cap_remaining REAL DEFAULT 0
-        );
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS taps (
+                tg_id INTEGER PRIMARY KEY,
+                taps_available INTEGER DEFAULT 0,
+                tap_reward REAL DEFAULT 0,
+                earn_cap_remaining REAL DEFAULT 0
+            )
+        """)
 
-        CREATE TABLE IF NOT EXISTS invoices (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            tg_id INTEGER,
-            package_id INTEGER,
-            base_price REAL,
-            unique_amount REAL,
-            status TEXT,
-            txid TEXT,
-            created_at INTEGER,
-            paid_at INTEGER
-        );
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS invoices (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                tg_id INTEGER,
+                package_id INTEGER,
+                base_price REAL,
+                unique_amount REAL,
+                status TEXT,
+                txid TEXT,
+                created_at INTEGER,
+                paid_at INTEGER
+            )
         """)
 
         conn.commit()
+
+        # 2) МИГРАЦИЯ users: если таблица users была создана раньше без tg_id
+        cols = _table_columns(cur, "users")
+        if "tg_id" not in cols:
+            # Самый надёжный путь в SQLite: пересоздать таблицу и переложить данные.
+            # Но данных у тебя там пока почти нет, поэтому это ок.
+            cur.execute("ALTER TABLE users RENAME TO users_old")
+            cur.execute("""
+                CREATE TABLE users (
+                    tg_id INTEGER PRIMARY KEY
+                )
+            """)
+
+            # Попробуем перенести что-то похожее на id, если было.
+            old_cols = _table_columns(cur, "users_old")
+            # Частые варианты: id, user_id, telegram_id
+            candidate = None
+            for c in ["id", "user_id", "telegram_id", "tgid", "tgId"]:
+                if c in old_cols:
+                    candidate = c
+                    break
+
+            if candidate:
+                cur.execute(f"INSERT OR IGNORE INTO users (tg_id) SELECT {candidate} FROM users_old")
+            # Если не нашли — просто оставляем пустую users, чтобы код работал.
+
+            cur.execute("DROP TABLE users_old")
+            conn.commit()
 
 init_db()
 
@@ -101,6 +144,10 @@ def tron_headers():
     return h
 
 def check_tron_payment(amount: float, after_ts: int):
+    if not TRON_RECEIVE_ADDRESS:
+        # Чтобы не падало 500, если адрес не задан
+        return False, None
+
     url = f"{TRONGRID_BASE}/v1/accounts/{TRON_RECEIVE_ADDRESS}/transactions/trc20"
     r = requests.get(
         url,
@@ -113,11 +160,13 @@ def check_tron_payment(amount: float, after_ts: int):
         timeout=15
     )
     r.raise_for_status()
+
     for tx in r.json().get("data", []):
         val = int(tx["value"]) / 1_000_000
         ts = tx["block_timestamp"] // 1000
         if abs(val - amount) < 0.000001 and ts >= after_ts:
             return True, tx["transaction_id"]
+
     return False, None
 
 # ---------------- ROUTES ----------------
@@ -145,7 +194,7 @@ def packages():
 @app.post("/api/payments/create")
 def create_payment(data: CreateInvoiceIn):
     if data.package_id not in PACKAGES:
-        return JSONResponse({"error": "bad package"}, 400)
+        return JSONResponse({"error": "bad package"}, status_code=400)
 
     pkg = PACKAGES[data.package_id]
     now = int(time.time())
@@ -153,9 +202,15 @@ def create_payment(data: CreateInvoiceIn):
     with closing(db()) as conn:
         cur = conn.cursor()
 
+        # гарантируем, что tg_id колонка существует (на всякий случай)
+        cols = _table_columns(cur, "users")
+        if "tg_id" not in cols:
+            init_db()
+
         cur.execute("INSERT OR IGNORE INTO users (tg_id) VALUES (?)", (data.tg_id,))
         conn.commit()
 
+        # создаём invoice
         cur.execute("""
             INSERT INTO invoices
             (tg_id, package_id, base_price, unique_amount, status, created_at)
@@ -164,7 +219,9 @@ def create_payment(data: CreateInvoiceIn):
         conn.commit()
 
         invoice_id = cur.lastrowid
-        unique = round(pkg["price"] + random.randint(1, 9999)/1_000_000, 6)
+
+        # делаем уникальную сумму (чтобы отличать платежи)
+        unique = round(pkg["price"] + random.randint(1, 9999) / 1_000_000, 6)
 
         cur.execute("UPDATE invoices SET unique_amount=? WHERE id=?",
                     (unique, invoice_id))
@@ -183,11 +240,12 @@ def create_payment(data: CreateInvoiceIn):
 def check_payment(data: CheckInvoiceIn):
     with closing(db()) as conn:
         cur = conn.cursor()
+
         cur.execute("SELECT * FROM invoices WHERE id=? AND tg_id=?",
                     (data.invoice_id, data.tg_id))
         inv = cur.fetchone()
         if not inv:
-            return JSONResponse({"error": "invoice not found"}, 404)
+            return JSONResponse({"error": "invoice not found"}, status_code=404)
 
         if inv["status"] == "paid":
             return {"ok": True, "paid": True}
@@ -203,15 +261,13 @@ def check_payment(data: CheckInvoiceIn):
         """, (txid, int(time.time()), inv["id"]))
 
         pkg = PACKAGES[inv["package_id"]]
-        cur.execute("""
-            INSERT OR IGNORE INTO taps (tg_id) VALUES (?)
-        """, (data.tg_id,))
 
+        cur.execute("INSERT OR IGNORE INTO taps (tg_id) VALUES (?)", (data.tg_id,))
         cur.execute("""
             UPDATE taps SET
-            taps_available = taps_available + ?,
+            taps_available = COALESCE(taps_available, 0) + ?,
             tap_reward = ?,
-            earn_cap_remaining = earn_cap_remaining + ?
+            earn_cap_remaining = COALESCE(earn_cap_remaining, 0) + ?
             WHERE tg_id=?
         """, (pkg["taps"], pkg["reward"], pkg["cap"], data.tg_id))
 
