@@ -3,17 +3,21 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
-import os, sqlite3, time, random, requests
+import os
+import sqlite3
+import time
+import random
+import requests
 from contextlib import closing
 from dotenv import load_dotenv
 
 load_dotenv()
 
+# ================== APP ==================
 app = FastAPI(title="TG Clicker API")
-BUILD = "9df0383"
-@app.get("/api/version")
-def version():
-    return {"ok": True, "build": BUILD}
+
+# Build marker (чтобы понимать, что прод реально обновился)
+BUILD = os.getenv("BUILD", "v1")
 
 # ---------------- CORS ----------------
 app.add_middleware(
@@ -32,15 +36,18 @@ app.mount("/static", StaticFiles(directory=WEBAPP_DIR), name="static")
 
 # ---------------- ENV ----------------
 DB_PATH = os.getenv("DB_PATH", os.path.join(BASE_DIR, "data.db"))
-TRONGRID_API_KEY = os.getenv("TRONGRID_API_KEY", "")
+TRONGRID_API_KEY = os.getenv("TRONGRID_API_KEY", "").strip()
 TRON_RECEIVE_ADDRESS = os.getenv("TRON_RECEIVE_ADDRESS", "").strip()
-TRC20_USDT_CONTRACT = os.getenv("TRC20_USDT_CONTRACT", "TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t").strip()
+TRC20_USDT_CONTRACT = os.getenv(
+    "TRC20_USDT_CONTRACT",
+    "TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t"
+).strip()
 TRONGRID_BASE = "https://api.trongrid.io"
 
-# анти-ложные совпадения: берем только платежи после создания инвойса (с небольшим запасом)
-PAYMENT_TIME_SLOP_SEC = int(os.getenv("PAYMENT_TIME_SLOP_SEC", "120"))  # 120 сек
-# допуск по переплате (можешь поставить 0 если хочешь "любой >= price")
-MAX_OVERPAY = float(os.getenv("MAX_OVERPAY", "1000"))  # по умолчанию огромный — переплата не мешает
+# Берем только платежи после создания инвойса (с запасом назад)
+PAYMENT_TIME_SLOP_SEC = int(os.getenv("PAYMENT_TIME_SLOP_SEC", "120"))
+# Допуск по переплате (чтобы “+газ” не ломал)
+MAX_OVERPAY = float(os.getenv("MAX_OVERPAY", "1000"))
 
 # ---------------- PACKAGES ----------------
 PACKAGES = {
@@ -49,23 +56,28 @@ PACKAGES = {
     3: {"name": "VIP",     "price": 100.0, "taps": 100_000, "reward": 0.002,  "cap": 200},
 }
 
-# ---------------- DB ----------------
+# ================== DB ==================
 def db():
     conn = sqlite3.connect(DB_PATH, check_same_thread=False)
     conn.row_factory = sqlite3.Row
     return conn
 
-def ensure_column(cur, table: str, col: str, col_def: str):
+def table_has_column(cur, table: str, col: str) -> bool:
     cur.execute(f"PRAGMA table_info({table})")
-    cols = [r["name"] for r in cur.fetchall()]
-    if col not in cols:
+    rows = cur.fetchall()
+    # rows are sqlite3.Row
+    cols = [r["name"] for r in rows]
+    return col in cols
+
+def ensure_column(cur, table: str, col: str, col_def: str):
+    if not table_has_column(cur, table, col):
         cur.execute(f"ALTER TABLE {table} ADD COLUMN {col} {col_def}")
 
 def init_db():
     with closing(db()) as conn:
         cur = conn.cursor()
 
-        # базовые таблицы
+        # 1) Создаем таблицы (новая схема)
         cur.executescript("""
         CREATE TABLE IF NOT EXISTS users (
             tg_id INTEGER PRIMARY KEY
@@ -99,21 +111,9 @@ def init_db():
         );
         """)
 
-        # миграции (если у тебя старый users без tg_id)
-        # если tg_id нет — проще пересоздать users, но SQLite не умеет DROP COLUMN.
-        # Поэтому: проверяем, если users есть, но tg_id нет — создаем новую таблицу users_new и меняем.
-        cur.execute("PRAGMA table_info(users)")
-        users_cols = [r[1] for r in cur.fetchall()]  # pragma via tuple
-        if "tg_id" not in users_cols:
-            cur.executescript("""
-            ALTER TABLE users RENAME TO users_old;
-            CREATE TABLE users (tg_id INTEGER PRIMARY KEY);
-            INSERT OR IGNORE INTO users(tg_id)
-            SELECT id FROM users_old WHERE id IS NOT NULL;
-            DROP TABLE users_old;
-            """)
-
-        # убедимся, что invoices имеет нужные поля (на случай старых версий)
+        # 2) Если у invoices чего-то нет — добавим
+        ensure_column(cur, "invoices", "tg_id", "INTEGER")
+        ensure_column(cur, "invoices", "package_id", "INTEGER")
         ensure_column(cur, "invoices", "base_price", "REAL")
         ensure_column(cur, "invoices", "unique_amount", "REAL")
         ensure_column(cur, "invoices", "status", "TEXT")
@@ -121,11 +121,32 @@ def init_db():
         ensure_column(cur, "invoices", "created_at", "INTEGER")
         ensure_column(cur, "invoices", "paid_at", "INTEGER")
 
+        # 3) Миграция users: если вдруг существует таблица users без tg_id
+        # (бывает, когда раньше была колонка id или что-то другое)
+        cur.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='users'")
+        if cur.fetchone():
+            if not table_has_column(cur, "users", "tg_id"):
+                # Сохраним старую таблицу, создадим новую
+                cur.executescript("""
+                ALTER TABLE users RENAME TO users_old;
+                CREATE TABLE users (tg_id INTEGER PRIMARY KEY);
+                """)
+                # Попробуем перенести данные “как можем”
+                # Если в users_old была колонка id — перельем её
+                cur.execute("PRAGMA table_info(users_old)")
+                old_cols = [r["name"] for r in cur.fetchall()]
+                if "id" in old_cols:
+                    cur.execute("INSERT OR IGNORE INTO users(tg_id) SELECT id FROM users_old WHERE id IS NOT NULL")
+                elif "tg_id" in old_cols:
+                    cur.execute("INSERT OR IGNORE INTO users(tg_id) SELECT tg_id FROM users_old WHERE tg_id IS NOT NULL")
+                # Удаляем старую
+                cur.execute("DROP TABLE users_old")
+
         conn.commit()
 
 init_db()
 
-# ---------------- MODELS ----------------
+# ================== MODELS ==================
 class CreateInvoiceIn(BaseModel):
     tg_id: int
     package_id: int
@@ -134,7 +155,7 @@ class CheckInvoiceIn(BaseModel):
     tg_id: int
     invoice_id: int
 
-# ---------------- TRON ----------------
+# ================== TRON ==================
 def tron_headers():
     h = {"accept": "application/json"}
     if TRONGRID_API_KEY:
@@ -161,11 +182,11 @@ def get_recent_trc20_transfers(limit: int = 50):
 
 def find_payment_for_invoice(base_price: float, created_at: int, conn: sqlite3.Connection):
     """
-    Ищем первый платеж:
+    Ищем платеж:
+      - ts >= created_at - slop
       - val >= base_price
-      - ts >= created_at - PAYMENT_TIME_SLOP_SEC
+      - val <= base_price + MAX_OVERPAY
       - txid еще не встречался в processed_tx
-      - (опционально) val <= base_price + MAX_OVERPAY
     """
     after_ts = int(created_at) - PAYMENT_TIME_SLOP_SEC
     cur = conn.cursor()
@@ -182,23 +203,20 @@ def find_payment_for_invoice(base_price: float, created_at: int, conn: sqlite3.C
 
         if ts < after_ts:
             continue
-
         if val < float(base_price):
             continue
-
         if val > float(base_price) + float(MAX_OVERPAY):
             continue
 
-        # уже использовали этот txid?
         cur.execute("SELECT 1 FROM processed_tx WHERE txid=? LIMIT 1", (txid,))
         if cur.fetchone():
             continue
 
-        return True, txid, val, ts
+        return True, txid, float(val), int(ts)
 
     return False, None, None, None
 
-# ---------------- ROUTES ----------------
+# ================== ROUTES ==================
 @app.get("/")
 def home():
     return FileResponse(INDEX_PATH) if os.path.exists(INDEX_PATH) else {"ok": True}
@@ -210,7 +228,6 @@ def health():
         "db": DB_PATH,
         "tron_ready": bool(TRON_RECEIVE_ADDRESS),
     }
-BUILD = "v1"
 
 @app.get("/api/version")
 def version():
@@ -225,7 +242,8 @@ def packages():
         "network": "TRON (TRC20 USDT)",
         "rules": {
             "min_amount": ">= package price",
-            "time_slop_sec": PAYMENT_TIME_SLOP_SEC
+            "time_slop_sec": PAYMENT_TIME_SLOP_SEC,
+            "max_overpay": MAX_OVERPAY,
         }
     }
 
@@ -240,11 +258,11 @@ def create_payment(data: CreateInvoiceIn):
     with closing(db()) as conn:
         cur = conn.cursor()
 
+        # гарантируем наличие пользователя
         cur.execute("INSERT OR IGNORE INTO users (tg_id) VALUES (?)", (data.tg_id,))
         cur.execute("INSERT OR IGNORE INTO taps (tg_id) VALUES (?)", (data.tg_id,))
 
-        # для совместимости со старым фронтом оставляем unique_amount,
-        # но логика проверки больше НЕ требует точного совпадения
+        # unique_amount оставляем для совместимости с фронтом (как "рекомендованную")
         unique = round(float(pkg["price"]) + random.randint(1, 9999) / 1_000_000, 6)
 
         cur.execute("""
@@ -259,9 +277,9 @@ def create_payment(data: CreateInvoiceIn):
         return {
             "ok": True,
             "invoice": {
-                "id": invoice_id,
-                "amount_usdt": unique,   # показываем как "рекомендованную сумму"
-                "min_amount_usdt": float(pkg["price"]),  # вот это важно для UI
+                "id": int(invoice_id),
+                "amount_usdt": unique,                 # рекомендованная сумма
+                "min_amount_usdt": float(pkg["price"]),# минимальная сумма
                 "address": TRON_RECEIVE_ADDRESS
             }
         }
@@ -270,6 +288,7 @@ def create_payment(data: CreateInvoiceIn):
 def check_payment(data: CheckInvoiceIn):
     with closing(db()) as conn:
         cur = conn.cursor()
+
         cur.execute("SELECT * FROM invoices WHERE id=? AND tg_id=?", (data.invoice_id, data.tg_id))
         inv = cur.fetchone()
         if not inv:
@@ -278,9 +297,9 @@ def check_payment(data: CheckInvoiceIn):
         if inv["status"] == "paid":
             return {"ok": True, "paid": True, "txid": inv["txid"]}
 
-        base_price = float(inv["base_price"] or 0.0)
+        # base_price надежно
+        base_price = float(inv["base_price"]) if inv["base_price"] is not None else 0.0
         if base_price <= 0:
-            # fallback если база не записалась
             pkg = PACKAGES.get(int(inv["package_id"]))
             base_price = float(pkg["price"]) if pkg else float(inv["unique_amount"] or 0.0)
 
@@ -288,13 +307,13 @@ def check_payment(data: CheckInvoiceIn):
         if not found:
             return {"ok": True, "paid": False}
 
-        # фиксируем tx как использованный
+        # фиксируем tx
         cur.execute(
             "INSERT OR IGNORE INTO processed_tx (txid, invoice_id, tg_id, amount, ts) VALUES (?, ?, ?, ?, ?)",
             (txid, int(inv["id"]), int(inv["tg_id"]), float(val), int(ts))
         )
 
-        # отмечаем invoice как paid
+        # отмечаем invoice
         cur.execute(
             "UPDATE invoices SET status='paid', txid=?, paid_at=? WHERE id=?",
             (txid, int(time.time()), int(inv["id"]))
@@ -311,4 +330,5 @@ def check_payment(data: CheckInvoiceIn):
         """, (int(pkg["taps"]), float(pkg["reward"]), float(pkg["cap"]), int(data.tg_id)))
 
         conn.commit()
+
         return {"ok": True, "paid": True, "txid": txid, "amount": val, "package": pkg}
