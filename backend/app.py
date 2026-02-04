@@ -65,7 +65,6 @@ def db():
 def table_has_column(cur, table: str, col: str) -> bool:
     cur.execute(f"PRAGMA table_info({table})")
     rows = cur.fetchall()
-    # rows are sqlite3.Row
     cols = [r["name"] for r in rows]
     return col in cols
 
@@ -122,24 +121,19 @@ def init_db():
         ensure_column(cur, "invoices", "paid_at", "INTEGER")
 
         # 3) Миграция users: если вдруг существует таблица users без tg_id
-        # (бывает, когда раньше была колонка id или что-то другое)
         cur.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='users'")
         if cur.fetchone():
             if not table_has_column(cur, "users", "tg_id"):
-                # Сохраним старую таблицу, создадим новую
                 cur.executescript("""
                 ALTER TABLE users RENAME TO users_old;
                 CREATE TABLE users (tg_id INTEGER PRIMARY KEY);
                 """)
-                # Попробуем перенести данные “как можем”
-                # Если в users_old была колонка id — перельем её
                 cur.execute("PRAGMA table_info(users_old)")
                 old_cols = [r["name"] for r in cur.fetchall()]
                 if "id" in old_cols:
                     cur.execute("INSERT OR IGNORE INTO users(tg_id) SELECT id FROM users_old WHERE id IS NOT NULL")
                 elif "tg_id" in old_cols:
                     cur.execute("INSERT OR IGNORE INTO users(tg_id) SELECT tg_id FROM users_old WHERE tg_id IS NOT NULL")
-                # Удаляем старую
                 cur.execute("DROP TABLE users_old")
 
         conn.commit()
@@ -247,6 +241,47 @@ def packages():
         }
     }
 
+# ✅ ВОТ ЭТО ГЛАВНОЕ: ОТДАЕМ ТАПЫ ДЛЯ UI
+@app.get("/api/user/{tg_id}")
+def get_user(tg_id: int):
+    with closing(db()) as conn:
+        cur = conn.cursor()
+
+        # гарантируем записи
+        cur.execute("INSERT OR IGNORE INTO users (tg_id) VALUES (?)", (tg_id,))
+        cur.execute("INSERT OR IGNORE INTO taps (tg_id) VALUES (?)", (tg_id,))
+        conn.commit()
+
+        cur.execute("""
+            SELECT
+                u.tg_id as userId,
+                IFNULL(t.taps_available, 0) as taps_left,
+                IFNULL(t.tap_reward, 0) as tap_reward,
+                IFNULL(t.earn_cap_remaining, 0) as cap_remaining
+            FROM users u
+            LEFT JOIN taps t ON t.tg_id = u.tg_id
+            WHERE u.tg_id = ?
+            LIMIT 1
+        """, (tg_id,))
+        row = cur.fetchone()
+
+        return {
+            "status": "ok",
+            "userId": int(row["userId"]),
+            "taps_left": int(row["taps_left"]),
+            "tap_reward": float(row["tap_reward"]),
+            "cap_remaining": float(row["cap_remaining"]),
+        }
+
+# ✅ ДЕБАГ: проверка что реально записано в taps
+@app.get("/api/debug/taps/{tg_id}")
+def debug_taps(tg_id: int):
+    with closing(db()) as conn:
+        cur = conn.cursor()
+        cur.execute("SELECT * FROM taps WHERE tg_id=? LIMIT 1", (tg_id,))
+        r = cur.fetchone()
+        return {"ok": True, "row": dict(r) if r else None}
+
 @app.post("/api/payments/create")
 def create_payment(data: CreateInvoiceIn):
     if data.package_id not in PACKAGES:
@@ -278,8 +313,8 @@ def create_payment(data: CreateInvoiceIn):
             "ok": True,
             "invoice": {
                 "id": int(invoice_id),
-                "amount_usdt": unique,                 # рекомендованная сумма
-                "min_amount_usdt": float(pkg["price"]),# минимальная сумма
+                "amount_usdt": unique,                  # рекомендованная сумма
+                "min_amount_usdt": float(pkg["price"]), # минимальная сумма
                 "address": TRON_RECEIVE_ADDRESS
             }
         }
