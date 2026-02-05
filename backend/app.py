@@ -70,13 +70,6 @@ def ensure_column(cur, table: str, col: str, col_def: str):
         cur.execute(f"ALTER TABLE {table} ADD COLUMN {col} {col_def}")
 
 def recreate_table(cur, old_name: str, new_ddl: str, copy_sql: str | None = None):
-    """
-    Аккуратно пересоздаёт таблицу:
-      old_name -> old_name_old
-      создаёт новую по new_ddl
-      копирует данные по copy_sql (если задан)
-      удаляет old
-    """
     cur.execute(f"ALTER TABLE {old_name} RENAME TO {old_name}_old")
     cur.executescript(new_ddl)
     if copy_sql:
@@ -87,7 +80,6 @@ def init_db():
     with closing(db()) as conn:
         cur = conn.cursor()
 
-        # 1) если таблиц нет — создаём новую схему
         cur.executescript("""
         CREATE TABLE IF NOT EXISTS users (
             tg_id INTEGER PRIMARY KEY,
@@ -124,69 +116,9 @@ def init_db():
         );
         """)
 
-        # 2) миграции users (если старая таблица без tg_id / с id / другая)
-        if table_exists(cur, "users"):
-            cols = table_cols(cur, "users")
-            if "tg_id" not in cols:
-                # пытаемся перенести из 'id' если было
-                new_ddl = """
-                CREATE TABLE users (
-                    tg_id INTEGER PRIMARY KEY,
-                    bonus_given INTEGER DEFAULT 0
-                );
-                """
-                copy_sql = None
-                if "id" in cols:
-                    copy_sql = "INSERT OR IGNORE INTO users(tg_id, bonus_given) SELECT id, 0 FROM users_old WHERE id IS NOT NULL"
-                recreate_table(cur, "users", new_ddl, copy_sql)
-            else:
-                ensure_column(cur, "users", "bonus_given", "INTEGER DEFAULT 0")
-
-        # 3) миграции taps (часто ломается именно taps)
-        if table_exists(cur, "taps"):
-            cols = table_cols(cur, "taps")
-            if "tg_id" not in cols:
-                # если вдруг было user_id
-                new_ddl = """
-                CREATE TABLE taps (
-                    tg_id INTEGER PRIMARY KEY,
-                    taps_available INTEGER DEFAULT 0,
-                    tap_reward REAL DEFAULT 0,
-                    earn_cap_remaining REAL DEFAULT 0,
-                    taps_total INTEGER DEFAULT 0,
-                    balance_usdt REAL DEFAULT 0.0
-                );
-                """
-                copy_sql = None
-                if "user_id" in cols:
-                    copy_sql = """
-                    INSERT OR IGNORE INTO taps(tg_id, taps_available, tap_reward, earn_cap_remaining, taps_total, balance_usdt)
-                    SELECT user_id,
-                           COALESCE(taps_available,0),
-                           COALESCE(tap_reward,0),
-                           COALESCE(earn_cap_remaining,0),
-                           COALESCE(taps_total,0),
-                           COALESCE(balance_usdt,0.0)
-                    FROM taps_old
-                    """
-                recreate_table(cur, "taps", new_ddl, copy_sql)
-            else:
-                ensure_column(cur, "taps", "taps_available", "INTEGER DEFAULT 0")
-                ensure_column(cur, "taps", "tap_reward", "REAL DEFAULT 0")
-                ensure_column(cur, "taps", "earn_cap_remaining", "REAL DEFAULT 0")
-                ensure_column(cur, "taps", "taps_total", "INTEGER DEFAULT 0")
-                ensure_column(cur, "taps", "balance_usdt", "REAL DEFAULT 0.0")
-
-        # 4) invoices поля
-        if table_exists(cur, "invoices"):
-            ensure_column(cur, "invoices", "tg_id", "INTEGER")
-            ensure_column(cur, "invoices", "package_id", "INTEGER")
-            ensure_column(cur, "invoices", "base_price", "REAL")
-            ensure_column(cur, "invoices", "unique_amount", "REAL")
-            ensure_column(cur, "invoices", "status", "TEXT")
-            ensure_column(cur, "invoices", "txid", "TEXT")
-            ensure_column(cur, "invoices", "created_at", "INTEGER")
-            ensure_column(cur, "invoices", "paid_at", "INTEGER")
+        # Добавляем/обновляем поля
+        ensure_column(cur, "taps", "taps_total", "INTEGER DEFAULT 0")
+        ensure_column(cur, "taps", "balance_usdt", "REAL DEFAULT 0.0")
 
         conn.commit()
 
@@ -253,29 +185,36 @@ def find_payment_for_invoice(base_price: float, created_at: int, conn: sqlite3.C
 def ensure_user_and_bonus(conn: sqlite3.Connection, tg_id: int):
     cur = conn.cursor()
 
-    # ensure rows exist
+    # Создаём записи, если их нет
     cur.execute("INSERT OR IGNORE INTO users (tg_id, bonus_given) VALUES (?, 0)", (tg_id,))
     cur.execute("""
-        INSERT OR IGNORE INTO taps (tg_id, taps_available, tap_reward, earn_cap_remaining, taps_total, balance_usdt)
-        VALUES (?, ?, ?, ?, 0, 0.0)
-    """, (tg_id, WELCOME_TAPS, WELCOME_REWARD, WELCOME_CAP))
+        INSERT OR IGNORE INTO taps 
+        (tg_id, taps_available, tap_reward, earn_cap_remaining, taps_total, balance_usdt)
+        VALUES (?, 0, ?, ?, 0, 0.0)
+    """, (tg_id, WELCOME_REWARD, WELCOME_CAP))
 
-    # bonus one-time
-    cur.execute("SELECT bonus_given FROM users WHERE tg_id=? LIMIT 1", (tg_id,))
-    u = cur.fetchone()
-    bonus_given = int(u["bonus_given"]) if u and u["bonus_given"] is not None else 0
+    # Атомарная проверка и выдача бонуса (только один раз)
+    conn.isolation_level = None
+    cur.execute("BEGIN IMMEDIATE")
+
+    cur.execute("SELECT bonus_given FROM users WHERE tg_id = ? FOR UPDATE", (tg_id,))
+    row = cur.fetchone()
+    bonus_given = row["bonus_given"] if row else 0
 
     if bonus_given == 0:
         cur.execute("""
             UPDATE taps SET
-              taps_available = taps_available + ?,
-              tap_reward = CASE WHEN tap_reward > 0 THEN tap_reward ELSE ? END,
-              earn_cap_remaining = earn_cap_remaining + ?
-            WHERE tg_id=?
+                taps_available = ?,
+                tap_reward = ?,
+                earn_cap_remaining = ?
+            WHERE tg_id = ?
         """, (WELCOME_TAPS, WELCOME_REWARD, WELCOME_CAP, tg_id))
-        cur.execute("UPDATE users SET bonus_given=1 WHERE tg_id=?", (tg_id,))
+        cur.execute("UPDATE users SET bonus_given = 1 WHERE tg_id = ?", (tg_id,))
+        conn.commit()
+    else:
+        conn.commit()
 
-    conn.commit()
+    conn.isolation_level = ''
 
 # ================== ROUTES ==================
 @app.get("/")
@@ -312,73 +251,90 @@ def get_user(tg_id: int):
             cur = conn.cursor()
             cur.execute("""
                 SELECT
-                    u.tg_id as userId,
-                    COALESCE(t.taps_available, 0) as taps_available,
-                    COALESCE(t.tap_reward, 0) as tap_reward,
-                    COALESCE(t.earn_cap_remaining, 0) as earn_cap_remaining,
-                    COALESCE(t.taps_total, 0) as taps_total,
-                    COALESCE(t.balance_usdt, 0.0) as balance_usdt,
-                    COALESCE(u.bonus_given, 0) as bonus_given
-                FROM users u
-                LEFT JOIN taps t ON t.tg_id = u.tg_id
-                WHERE u.tg_id = ?
-                LIMIT 1
-            """, (int(tg_id),))
+                    t.taps_available,
+                    t.tap_reward,
+                    t.earn_cap_remaining,
+                    t.taps_total,
+                    t.balance_usdt
+                FROM taps t
+                WHERE t.tg_id = ?
+            """, (tg_id,))
             row = cur.fetchone()
 
             if not row:
-                return {"status": "ok", "userId": int(tg_id), "taps_available": 0, "tap_reward": 0.0, "earn_cap_remaining": 0.0, "bonus_given": 0, "balance": {"balance_usdt": 0.0}, "taps": {}}
+                return {"ok": False, "error": "User not found"}
 
             return {
-                "status": "ok",
-                "userId": int(row["userId"]),
-                "taps_available": int(row["taps_available"]),
-                "tap_reward": float(row["tap_reward"]),
-                "earn_cap_remaining": float(row["earn_cap_remaining"]),
-                "taps_total": int(row["taps_total"]),
+                "ok": True,
                 "balance": {"balance_usdt": float(row["balance_usdt"])},
-                "bonus_given": int(row["bonus_given"]),
+                "taps": {
+                    "taps_available": int(row["taps_available"]),
+                    "taps_total": int(row["taps_total"]),
+                    "tap_reward": float(row["tap_reward"]),
+                    "earn_cap_remaining": float(row["earn_cap_remaining"])
+                }
             }
     except Exception as e:
         return JSONResponse(
             status_code=500,
-            content={
-                "ok": False,
-                "error": str(e),
-                "trace": traceback.format_exc()[:4000]
-            }
+            content={"ok": False, "error": str(e), "trace": traceback.format_exc()[:2000]}
         )
 
-@app.get("/api/debug/diag/{tg_id}")
-def debug_diag(tg_id: int):
+@app.post("/api/tap")
+def tap(data: dict):
+    tg_id = data.get("tg_id")
+    if not tg_id:
+        return {"ok": False, "error": "No tg_id"}
+
     with closing(db()) as conn:
         cur = conn.cursor()
-        out = {"ok": True, "tg_id": int(tg_id)}
-        for t in ["users", "taps", "invoices", "processed_tx"]:
-            if table_exists(cur, t):
-                out[f"{t}_cols"] = table_cols(cur, t)
-            else:
-                out[f"{t}_cols"] = None
-        # попробуем ensure_user_and_bonus и вернём что в taps
-        try:
-            ensure_user_and_bonus(conn, int(tg_id))
-            cur.execute("SELECT * FROM users WHERE tg_id=? LIMIT 1", (int(tg_id),))
-            out["user_row"] = dict(cur.fetchone() or {})
-            cur.execute("SELECT * FROM taps WHERE tg_id=? LIMIT 1", (int(tg_id),))
-            out["taps_row"] = dict(cur.fetchone() or {})
-        except Exception as e:
-            out["ensure_error"] = str(e)
-            out["trace"] = traceback.format_exc()[:4000]
-        return out
+        cur.execute("""
+            SELECT taps_available, tap_reward, earn_cap_remaining, taps_total, balance_usdt
+            FROM taps WHERE tg_id = ?
+        """, (tg_id,))
+        row = cur.fetchone()
 
-@app.get("/api/debug/taps/{tg_id}")
-def debug_taps(tg_id: int):
-    with closing(db()) as conn:
-        cur = conn.cursor()
-        cur.execute("SELECT * FROM taps WHERE tg_id=? LIMIT 1", (int(tg_id),))
-        r = cur.fetchone()
-        return {"ok": True, "row": dict(r) if r else None}
+        if not row:
+            return {"ok": False, "error": "User not found"}
 
+        taps_available = int(row["taps_available"])
+        if taps_available <= 0:
+            return {
+                "ok": True,
+                "balance_usdt": float(row["balance_usdt"]),
+                "taps_available": 0,
+                "tap_reward": float(row["tap_reward"]),
+                "taps_total": int(row["taps_total"]),
+                "earn_cap_remaining": float(row["earn_cap_remaining"])
+            }
+
+        reward = float(row["tap_reward"])
+        new_balance = float(row["balance_usdt"]) + reward
+        new_taps = taps_available - 1
+        new_total = int(row["taps_total"]) + 1
+        new_cap = float(row["earn_cap_remaining"]) - reward
+
+        cur.execute("""
+            UPDATE taps SET
+                balance_usdt = ?,
+                taps_available = ?,
+                taps_total = ?,
+                earn_cap_remaining = ?
+            WHERE tg_id = ?
+        """, (new_balance, new_taps, new_total, new_cap, tg_id))
+
+        conn.commit()
+
+        return {
+            "ok": True,
+            "balance_usdt": new_balance,
+            "taps_available": new_taps,
+            "tap_reward": reward,
+            "taps_total": new_total,
+            "earn_cap_remaining": new_cap
+        }
+
+# Оставляем твои платежные роуты без изменений
 @app.post("/api/payments/create")
 def create_payment(data: CreateInvoiceIn):
     if data.package_id not in PACKAGES:
@@ -455,58 +411,6 @@ def check_payment(data: CheckInvoiceIn):
         conn.commit()
         return {"ok": True, "paid": True, "txid": txid, "amount": val, "package": pkg}
 
-# Новый роут для тапов
-@app.post("/api/tap")
-def tap(data: dict):
-    tg_id = data.get("tg_id")
-    if not tg_id:
-        return {"ok": False, "error": "No tg_id"}
-
-    with closing(db()) as conn:
-        cur = conn.cursor()
-        cur.execute("SELECT * FROM taps WHERE tg_id = ?", (tg_id,))
-        row = cur.fetchone()
-
-        if not row:
-            return {"ok": False, "error": "User not found"}
-
-        taps_available = row["taps_available"]
-        if taps_available <= 0:
-            return {
-                "ok": True,
-                "balance_usdt": row["balance_usdt"],
-                "taps_available": 0,
-                "tap_reward": row["tap_reward"],
-                "taps_total": row["taps_total"],
-                "earn_cap_remaining": row["earn_cap_remaining"]
-            }
-
-        new_balance = row["balance_usdt"] + row["tap_reward"]
-        new_taps = taps_available - 1
-        new_total = row["taps_total"] + 1
-        new_cap = row["earn_cap_remaining"] - row["tap_reward"]
-
-        cur.execute("""
-            UPDATE taps SET
-                balance_usdt = ?,
-                taps_available = ?,
-                taps_total = ?,
-                earn_cap_remaining = ?
-            WHERE tg_id = ?
-        """, (new_balance, new_taps, new_total, new_cap, tg_id))
-
-        conn.commit()
-
-        return {
-            "ok": True,
-            "balance_usdt": new_balance,
-            "taps_available": new_taps,
-            "tap_reward": row["tap_reward"],
-            "taps_total": new_total,
-            "earn_cap_remaining": new_cap
-        }
-
-# Заглушка для рефералов (можно доработать позже)
 @app.get("/api/referrals/{tg_id}")
 def get_referrals(tg_id: int):
     return {
