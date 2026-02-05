@@ -4,8 +4,17 @@ from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, WebAppI
 from telegram.ext import Application, CommandHandler, ContextTypes
 
 BOT_TOKEN = os.getenv("BOT_TOKEN", "").strip()
-BACKEND_URL = os.getenv("BACKEND_URL", "https://click-uper.com/?v=3").rstrip("/")
-MINIAPP_URL = os.getenv("MINIAPP_URL", "https://click-uper.com/?v=3").rstrip("/")
+
+BACKEND_URL = os.getenv(
+    "BACKEND_URL",
+    "https://click-uper.com"
+).rstrip("/")
+
+MINIAPP_URL = os.getenv(
+    "MINIAPP_URL",
+    "https://click-uper.com/?v=5"
+).rstrip("/")
+
 
 def parse_ref(start_arg: str):
     # ожидаем ref_123
