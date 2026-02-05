@@ -12,7 +12,7 @@ BACKEND_URL = os.getenv(
 
 MINIAPP_URL = os.getenv(
     "MINIAPP_URL",
-    "https://click-uper.com/?v=16"
+    "https://click-uper.com/?v=17"
 ).rstrip("/")
 
 
