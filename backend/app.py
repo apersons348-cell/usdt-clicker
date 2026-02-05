@@ -1,35 +1,12 @@
-# ================== AUTOMATIC MIGRATION ==================
-import sys
-import os
-
-# Добавляем путь к корню проекта для импорта миграции
-sys.path.append(os.path.dirname(os.path.dirname(__file__)))
-
-# Запускаем миграцию перед стартом сервера
-try:
-    print("=== Запуск миграции базы данных ===")
-    from migration import migrate_database
-    migrate_database()
-except ImportError:
-    print("⚠️  Модуль миграции не найден, продолжаем без миграции...")
-except Exception as e:
-    print(f"⚠️  Миграция не удалась: {e}")
-    print("Продолжаем работу без миграции...")
-
-# ================== IMPORTS ==================
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
-import sqlite3
-import time
-import random
-import requests
-import traceback
+import os, sqlite3, time, random, requests, traceback, hashlib, hmac, json
 from contextlib import closing
 from dotenv import load_dotenv
-from typing import Optional, Dict
+from typing import Optional, Dict, Any
 from datetime import datetime, timedelta
 
 load_dotenv()
@@ -64,6 +41,11 @@ TRONGRID_BASE = "https://api.trongrid.io"
 
 PAYMENT_TIME_SLOP_SEC = int(os.getenv("PAYMENT_TIME_SLOP_SEC", "300"))
 MAX_OVERPAY = float(os.getenv("MAX_OVERPAY", "1000"))
+
+# Настройки
+WELCOME_TAPS = 10000
+WELCOME_REWARD = 0.0001
+WELCOME_CAP = 1.0
 
 # ---------------- PACKAGES ----------------
 PACKAGES = {
@@ -150,7 +132,6 @@ def init_db():
         
         conn.commit()
 
-# Инициализируем БД
 init_db()
 
 # ================== MODELS ==================
@@ -515,19 +496,9 @@ async def check_payment(request: CheckInvoiceRequest):
                     "package": PACKAGES.get(payment['package_id'])
                 }
             
-            # Проверяем время создания платежа
-            if payment['created_at']:
-                try:
-                    # Пытаемся преобразовать время создания
-                    created_dt = datetime.fromisoformat(payment['created_at'].replace('Z', '+00:00'))
-                    created_at = int(created_dt.timestamp())
-                except:
-                    created_at = int(time.time()) - 60
-            else:
-                created_at = int(time.time())
-            
             # Проверяем транзакцию
-            tx_info = check_tron_transaction(payment['unique_amount'], created_at)
+            payment_time = int(time.time())  # временное решение
+            tx_info = check_tron_transaction(payment['unique_amount'], payment_time)
             
             if tx_info:
                 # Помечаем как оплаченный
