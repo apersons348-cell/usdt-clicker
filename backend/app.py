@@ -3,17 +3,17 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
-import os, sqlite3, time, random, requests, traceback, hashlib, hmac, json
+import os, sqlite3, time, traceback
 from contextlib import closing
 from dotenv import load_dotenv
-from typing import Optional, Dict, Any
-from datetime import datetime, timedelta
+from typing import Dict, Any
+from datetime import datetime
 
 load_dotenv()
 
-app = FastAPI(title="TG Clicker API", version="3.0")
+app = FastAPI(title="TG Clicker", version="4.0")
 
-BUILD = os.getenv("BUILD") or os.getenv("RENDER_GIT_COMMIT") or "local"
+BUILD = os.getenv("BUILD") or os.getenv("RENDER_GIT_COMMIT") or "clean"
 
 # ---------------- CORS ----------------
 app.add_middleware(
@@ -27,50 +27,35 @@ app.add_middleware(
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 WEBAPP_DIR = os.path.join(os.getcwd(), "webapp")
 INDEX_PATH = os.path.join(WEBAPP_DIR, "index.html")
-if os.path.exists(INDEX_PATH):
+if os.path.exists(WEBAPP_DIR):
     app.mount("/static", StaticFiles(directory=WEBAPP_DIR), name="static")
 
 # ---------------- ENV ----------------
 DB_PATH = os.getenv("DB_PATH", os.path.join(BASE_DIR, "data.db"))
-TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "").strip()
 
-TRONGRID_API_KEY = os.getenv("TRONGRID_API_KEY", "").strip()
-TRON_RECEIVE_ADDRESS = os.getenv("TRON_RECEIVE_ADDRESS", "").strip()
-TRC20_USDT_CONTRACT = os.getenv("TRC20_USDT_CONTRACT", "TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t").strip()
-TRONGRID_BASE = "https://api.trongrid.io"
-
-PAYMENT_TIME_SLOP_SEC = int(os.getenv("PAYMENT_TIME_SLOP_SEC", "300"))
-MAX_OVERPAY = float(os.getenv("MAX_OVERPAY", "1000"))
-
-# Настройки
-WELCOME_TAPS = 10000
-WELCOME_REWARD = 0.0001
-WELCOME_CAP = 1.0
-
-# ---------------- PACKAGES ----------------
+# ---------------- ПАКЕТЫ ----------------
 PACKAGES = {
-    1: {"name": "Новичок", "price": 10.0, "taps": 100000, "reward": 0.0002, "cap": 20.0},
-    2: {"name": "Профи", "price": 50.0, "taps": 500000, "reward": 0.00025, "cap": 125.0},
-    3: {"name": "VIP", "price": 100.0, "taps": 1000000, "reward": 0.0003, "cap": 300.0},
+    "basic": {"name": "Новичок", "price": 10.0, "taps": 10000, "reward": 0.0002},
+    "pro": {"name": "Профи", "price": 50.0, "taps": 50000, "reward": 0.00025},
+    "max": {"name": "VIP", "price": 100.0, "taps": 100000, "reward": 0.0003},
 }
 
-# ================== DB ==================
+# ================== БАЗА ДАННЫХ ==================
 def get_db():
     """Получение соединения с БД"""
     conn = sqlite3.connect(DB_PATH, check_same_thread=False, timeout=30)
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA journal_mode=WAL;")
     conn.execute("PRAGMA synchronous=NORMAL;")
-    conn.execute("PRAGMA foreign_keys=ON;")
     conn.execute("PRAGMA busy_timeout=5000;")
     return conn
 
 def init_db():
-    """Инициализация базы данных"""
+    """Инициализация базы данных при запуске"""
     with closing(get_db()) as conn:
         cur = conn.cursor()
         
-        # Таблица пользователей (старая схема для совместимости)
+        # Создаем таблицу users если её нет
         cur.execute("""
             CREATE TABLE IF NOT EXISTS users (
                 telegram_id INTEGER UNIQUE NOT NULL,
@@ -87,25 +72,12 @@ def init_db():
                 last_active TEXT,
                 package_expires TEXT,
                 package_type TEXT,
-                daily_taps INTEGER DEFAULT 0
+                daily_taps INTEGER DEFAULT 0,
+                welcome_given BOOLEAN DEFAULT 0
             )
         """)
         
-        # Таблица user_stats (новая схема для совместимости)
-        cur.execute("""
-            CREATE TABLE IF NOT EXISTS user_stats (
-                user_id INTEGER PRIMARY KEY,
-                balance REAL DEFAULT 0.0,
-                free_taps INTEGER DEFAULT 10000,
-                total_taps INTEGER DEFAULT 0,
-                package_taps_remaining INTEGER DEFAULT 0,
-                tap_reward REAL DEFAULT 0.0001,
-                package_type TEXT,
-                package_expires TIMESTAMP
-            )
-        """)
-        
-        # Таблица payments
+        # Создаем таблицу payments если её нет
         cur.execute("""
             CREATE TABLE IF NOT EXISTS payments (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -118,32 +90,22 @@ def init_db():
             )
         """)
         
-        # Таблица referrals
-        cur.execute("""
-            CREATE TABLE IF NOT EXISTS referrals (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                referrer_id INTEGER NOT NULL,
-                referred_id INTEGER NOT NULL,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                UNIQUE(referred_id)
-            )
-        """)
-        
-        # Индексы
+        # Индексы для быстрого поиска
         cur.execute("CREATE INDEX IF NOT EXISTS idx_users_telegram ON users(telegram_id)")
-        cur.execute("CREATE INDEX IF NOT EXISTS idx_payments_user ON payments(telegram_id)")
-        cur.execute("CREATE INDEX IF NOT EXISTS idx_referrals_referrer ON referrals(referrer_id)")
+        cur.execute("CREATE INDEX IF NOT EXISTS idx_payments_telegram ON payments(telegram_id)")
+        cur.execute("CREATE INDEX IF NOT EXISTS idx_users_last_active ON users(last_active)")
         
         conn.commit()
+        print("✅ База данных инициализирована")
 
-# Инициализируем базу при импорте
+# Инициализируем базу при старте
 init_db()
 
-# ================== MODELS ==================
+# ================== МОДЕЛИ ==================
 class TapRequest(BaseModel):
     telegram_id: int
 
-class PaymentRequest(BaseModel):
+class BuyPackageRequest(BaseModel):
     telegram_id: int
     package_type: str = "basic"
 
@@ -154,9 +116,9 @@ class SaveProgressRequest(BaseModel):
     paid_taps_left: int = 0
     total_taps: int = 0
 
-# ================== HELPERS ==================
-def get_or_create_user(conn, telegram_id: int) -> int:
-    """Получить или создать пользователя, возвращает telegram_id (для совместимости)"""
+# ================== ХЕЛПЕРЫ ==================
+def get_or_create_user(conn, telegram_id: int):
+    """Получить или создать пользователя"""
     cur = conn.cursor()
     
     # Проверяем существующего пользователя
@@ -166,10 +128,11 @@ def get_or_create_user(conn, telegram_id: int) -> int:
     if row:
         return telegram_id
     
-    # Создаем нового пользователя
+    # Создаем нового пользователя с приветственным бонусом
     cur.execute("""
-        INSERT INTO users (telegram_id, balance, free_taps_left, tap_value)
-        VALUES (?, 1.0, 10000, 0.0001)
+        INSERT INTO users (
+            telegram_id, balance, free_taps_left, tap_value, welcome_given, last_active
+        ) VALUES (?, 1.0, 10000, 0.0001, 1, datetime('now'))
     """, (telegram_id,))
     
     conn.commit()
@@ -186,15 +149,19 @@ def get_user_stats(conn, telegram_id: int) -> Dict:
             paid_taps_left as package_taps,
             tap_value as tap_reward,
             package_type,
-            CASE WHEN package_expires IS NOT NULL AND datetime(package_expires) > datetime('now') 
-                 THEN 1 ELSE 0 END as has_package,
-            1 as welcome_given
+            CASE 
+                WHEN package_expires IS NOT NULL AND datetime(package_expires) > datetime('now') 
+                THEN 1 
+                ELSE 0 
+            END as has_package,
+            welcome_given
         FROM users 
         WHERE telegram_id = ?
     """, (telegram_id,))
     
     row = cur.fetchone()
     if not row:
+        # Возвращаем дефолтные значения если пользователь не найден
         return {
             "balance": 1.0,
             "free_taps": 10000,
@@ -212,7 +179,7 @@ def get_user_stats(conn, telegram_id: int) -> Dict:
 @app.get("/")
 async def root():
     """Корневой endpoint"""
-    return {"app": "TG Clicker", "status": "running", "version": "3.0"}
+    return {"app": "TG Clicker", "status": "running", "version": "4.0"}
 
 @app.get("/api/health")
 async def health_check():
@@ -226,7 +193,6 @@ async def health_check():
         return {
             "ok": True,
             "db": db_ok,
-            "tron_configured": bool(TRON_RECEIVE_ADDRESS),
             "timestamp": int(time.time())
         }
     except Exception as e:
@@ -250,7 +216,7 @@ async def get_user(telegram_id: int):
     try:
         with closing(get_db()) as conn:
             # Получаем или создаем пользователя
-            user_id = get_or_create_user(conn, telegram_id)
+            get_or_create_user(conn, telegram_id)
             
             # Получаем статистику
             stats = get_user_stats(conn, telegram_id)
@@ -344,7 +310,7 @@ async def process_tap(request: TapRequest):
         )
 
 @app.post("/api/buy-package")
-async def buy_package(request: PaymentRequest):
+async def buy_package(request: BuyPackageRequest):
     """Покупка пакета тапов"""
     try:
         with closing(get_db()) as conn:
@@ -352,35 +318,22 @@ async def buy_package(request: PaymentRequest):
             cur = conn.cursor()
             
             # Проверяем существование пользователя
-            cur.execute("SELECT telegram_id FROM users WHERE telegram_id = ?", (request.telegram_id,))
-            if not cur.fetchone():
-                conn.rollback()
-                return JSONResponse(
-                    status_code=404,
-                    content={"ok": False, "error": "User not found"}
-                )
+            get_or_create_user(conn, request.telegram_id)
             
             # Проверяем тип пакета
-            if request.package_type not in ["basic", "pro", "max"]:
+            if request.package_type not in PACKAGES:
                 conn.rollback()
                 return JSONResponse(
                     status_code=400,
                     content={"ok": False, "error": "Invalid package type"}
                 )
             
-            # Параметры пакетов
-            packages = {
-                "basic": {"price": 10.0, "taps": 10000, "reward": 0.0002},
-                "pro": {"price": 50.0, "taps": 50000, "reward": 0.00025},
-                "max": {"price": 100.0, "taps": 100000, "reward": 0.0003}
-            }
-            
-            package = packages[request.package_type]
+            package = PACKAGES[request.package_type]
             
             # Создаем запись о платеже
             cur.execute("""
-                INSERT INTO payments (telegram_id, amount, package_type, status)
-                VALUES (?, ?, ?, 'completed')
+                INSERT INTO payments (telegram_id, amount, package_type, status, completed_at)
+                VALUES (?, ?, ?, 'completed', datetime('now'))
             """, (request.telegram_id, package["price"], request.package_type))
             
             # Обновляем данные пользователя
@@ -389,7 +342,8 @@ async def buy_package(request: PaymentRequest):
                 SET paid_taps_left = paid_taps_left + ?,
                     tap_value = ?,
                     package_type = ?,
-                    package_expires = datetime('now', '+30 days')
+                    package_expires = datetime('now', '+30 days'),
+                    last_active = datetime('now')
                 WHERE telegram_id = ?
             """, (package["taps"], package["reward"], request.package_type, request.telegram_id))
             
@@ -397,10 +351,11 @@ async def buy_package(request: PaymentRequest):
             
             return {
                 "ok": True,
-                "message": f"Пакет {request.package_type} успешно активирован!",
+                "message": f"Пакет '{package['name']}' успешно активирован!",
                 "package": request.package_type,
                 "taps_added": package["taps"],
-                "new_reward": package["reward"]
+                "new_reward": package["reward"],
+                "expires_in": "30 дней"
             }
             
     except Exception as e:
@@ -436,8 +391,10 @@ async def save_progress(request: SaveProgressRequest):
             if cur.rowcount == 0:
                 # Если пользователь не найден, создаем его
                 cur.execute("""
-                    INSERT INTO users (telegram_id, balance, free_taps_left, paid_taps_left, total_taps, last_active)
-                    VALUES (?, ?, ?, ?, ?, datetime('now'))
+                    INSERT INTO users (
+                        telegram_id, balance, free_taps_left, paid_taps_left, 
+                        total_taps, last_active, welcome_given
+                    ) VALUES (?, ?, ?, ?, ?, datetime('now'), 1)
                 """, (
                     request.telegram_id,
                     request.balance,
@@ -530,4 +487,5 @@ async def serve_static(full_path: str):
 
 if __name__ == "__main__":
     import uvicorn
+    print("🚀 Запуск TG Clicker версии 4.0")
     uvicorn.run(app, host="0.0.0.0", port=8000, log_level="info")
