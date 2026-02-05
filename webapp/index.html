@@ -67,7 +67,6 @@
       font-size:13px;
       color: var(--muted);
       user-select:none;
-      -webkit-user-select:none;
       max-width: 70%;
       overflow:hidden;
       text-overflow: ellipsis;
@@ -88,7 +87,6 @@
       border-radius: 999px;
       font-weight:800;
       font-size:12px;
-      touch-action: manipulation;
     }
     .lang button.active{
       background: rgba(45,125,255,.22);
@@ -111,9 +109,7 @@
       flex:1;
       min-height:0;
       overflow-y:auto;
-      -webkit-overflow-scrolling: touch;
       padding:14px;
-      touch-action: pan-y;
     }
     .screen.active{ display:block; }
 
@@ -140,7 +136,6 @@
       font-size:16px;
       color: var(--muted);
       font-weight:800;
-      letter-spacing:.08em;
     }
 
     .subline{
@@ -166,19 +161,13 @@
       justify-content:center;
       align-items:center;
       overflow:hidden;
-
-      background:
-        radial-gradient(120px 120px at 40% 35%, rgba(255,255,255,.16) 0%, transparent 60%),
-        radial-gradient(220px 220px at 60% 65%, rgba(45,125,255,.16) 0%, transparent 60%),
-        rgba(255,255,255,.04);
+      background: radial-gradient(120px 120px at 40% 35%, rgba(255,255,255,.16) 0%, transparent 60%),
+                  radial-gradient(220px 220px at 60% 65%, rgba(45,125,255,.16) 0%, transparent 60%),
+                  rgba(255,255,255,.04);
       border:1px solid rgba(255,255,255,.10);
-
-      -webkit-user-select:none;
       user-select:none;
       -webkit-tap-highlight-color: transparent;
       cursor:pointer;
-
-      touch-action: none;
     }
     .coin:active{ transform: scale(0.995); }
 
@@ -189,7 +178,6 @@
       display:flex;
       justify-content:center;
       align-items:center;
-      position:relative;
       background: rgba(0,0,0,.12);
       border: 1px solid rgba(255,255,255,.10);
     }
@@ -200,8 +188,6 @@
       object-fit: contain;
       filter: drop-shadow(0 10px 25px rgba(0,0,0,.35));
       pointer-events:none;
-      user-select:none;
-      -webkit-user-drag:none;
     }
 
     .stats{
@@ -221,7 +207,6 @@
     .stat .k{
       color: var(--muted);
       font-size:12px;
-      letter-spacing:.12em;
     }
     .stat .v{
       margin-top:6px;
@@ -231,8 +216,6 @@
     .stat .v small{
       font-size:12px;
       color: var(--muted);
-      font-weight:800;
-      letter-spacing:.08em;
       margin-left:6px;
     }
 
@@ -244,8 +227,6 @@
       padding:10px 12px;
       color: var(--muted);
       font-size:13px;
-      line-height:1.35;
-      text-align:left;
     }
     .hint b{ color: var(--text); }
 
@@ -258,7 +239,6 @@
       text-shadow: 0 6px 20px rgba(0,0,0,.55);
       animation: floatUp 900ms ease-out forwards;
       pointer-events:none;
-      user-select:none;
     }
     @keyframes floatUp{
       0%   { opacity:0; transform: translate(-50%,-30%) scale(.95); }
@@ -268,22 +248,16 @@
 
     .tabs{
       position: fixed;
-      left: 0;
-      right: 0;
-      bottom: 0;
+      left: 0; right: 0; bottom: 0;
       padding: 10px 12px calc(10px + var(--safeBot)) 12px;
-      background: linear-gradient(180deg, rgba(6,14,22,0) 0%, rgba(6,14,22,.70) 25%, rgba(6,14,22,.92) 100%);
+      background: linear-gradient(180deg, rgba(6,14,22,0) 0%, rgba(6,14,22,.92) 100%);
       backdrop-filter: blur(10px);
-      -webkit-backdrop-filter: blur(10px);
-      touch-action: manipulation;
     }
     .tabsInner{
       max-width:520px;
       margin:0 auto;
       display:flex;
       gap:10px;
-      justify-content:space-between;
-      align-items:center;
     }
 
     .tabBtn{
@@ -291,14 +265,10 @@
       border:1px solid rgba(255,255,255,.10);
       background: rgba(255,255,255,.06);
       color: var(--muted);
-      padding:12px 12px;
+      padding:12px;
       border-radius: 16px;
       font-weight:900;
-      letter-spacing:.02em;
       cursor:pointer;
-      user-select:none;
-      -webkit-user-select:none;
-      touch-action: manipulation;
     }
     .tabBtn.active{
       color: var(--text);
@@ -309,7 +279,7 @@
     .row{ display:flex; gap:10px; flex-wrap:wrap; }
     .box{
       flex:1;
-      min-width: 170px;
+      min-width:170px;
       background: rgba(0,0,0,.12);
       border:1px solid rgba(255,255,255,.08);
       border-radius: var(--radius2);
@@ -319,7 +289,6 @@
       margin:0 0 8px;
       font-size:13px;
       color: var(--muted);
-      letter-spacing:.12em;
     }
     .bigNum{
       font-size:30px;
@@ -330,41 +299,33 @@
       display:flex;
       gap:8px;
       margin-top:10px;
-      touch-action: manipulation;
       flex-wrap:wrap;
     }
 
-    input, select, textarea{
-      width:100%;
-      padding:12px 12px;
+    input, select{
+      flex:1;
+      min-width:0;
+      padding:12px;
       border-radius: 14px;
       border:1px solid rgba(255,255,255,.12);
       background: rgba(255,255,255,.06);
       color: var(--text);
-      outline:none;
       font-size:14px;
-      touch-action: manipulation;
     }
 
     .btn{
       border:none;
       border-radius: 14px;
-      padding:12px 12px;
+      padding:12px 16px;
       background: rgba(45,125,255,.25);
       color: var(--text);
       font-weight:900;
-      cursor:pointer;
       border:1px solid rgba(45,125,255,.35);
-      touch-action: manipulation;
-      width:100%;
+      cursor:pointer;
     }
     .btn.ghost{
       background: rgba(255,255,255,.06);
       border:1px solid rgba(255,255,255,.10);
-      color: var(--text);
-      width:auto;
-      white-space:nowrap;
-      padding:12px 14px;
     }
     .btn.ok{
       background: rgba(24,198,163,.18);
@@ -375,69 +336,31 @@
       border-color: rgba(255,77,77,.22);
     }
 
-    .list{
-      margin-top:10px;
-      display:flex;
-      flex-direction:column;
-      gap:8px;
-      max-height: 320px;
-      overflow:auto;
-      padding-right:4px;
-      touch-action: pan-y;
-    }
-    .item{
-      display:flex;
-      justify-content:space-between;
-      gap:10px;
-      padding:10px 12px;
-      border-radius: 14px;
-      border:1px solid rgba(255,255,255,.08);
-      background: rgba(0,0,0,.10);
-      font-size:14px;
-      align-items:center;
-    }
-    .muted{ color: var(--muted); }
-
-    .subCard{
-      margin-top:10px;
-      border:1px solid rgba(255,255,255,.08);
-      background: rgba(0,0,0,.10);
-      border-radius: 16px;
-      padding:12px;
-      touch-action: manipulation;
-    }
-    .subCard h3{
-      margin:0 0 8px;
-      font-size:13px;
-      color: var(--muted);
-      letter-spacing:.12em;
-    }
-
     .pkgGrid{
       display:flex;
       flex-direction:column;
       gap:10px;
-      margin-top:8px;
+      margin-top:12px;
     }
     .pkg{
       border:1px solid rgba(255,255,255,.10);
       background: rgba(255,255,255,.05);
       border-radius: 16px;
-      padding:12px;
+      padding:14px;
     }
     .pkgTop{
       display:flex;
       justify-content:space-between;
       align-items:flex-start;
-      gap:10px;
+      gap:12px;
     }
     .pkgName{
       font-weight:900;
-      font-size:16px;
+      font-size:17px;
     }
     .pkgPrice{
       font-weight:900;
-      font-size:16px;
+      font-size:17px;
       color:#dff6ff;
       white-space:nowrap;
     }
@@ -445,22 +368,33 @@
       margin-top:6px;
       color: var(--muted);
       font-size:13px;
-      line-height:1.35;
     }
-    .pkgActions{
-      margin-top:10px;
-      display:flex;
-      gap:10px;
-      flex-wrap:wrap;
+
+    .withdrawBox{
+      margin-top:20px;
+      padding:16px;
+      background: rgba(0,0,0,.12);
+      border:1px solid rgba(255,255,255,.08);
+      border-radius: var(--radius);
     }
-    .pkgActions .btn{
-      width:auto;
-      flex:1;
-      min-width: 140px;
+    .withdrawBox h3{
+      margin:0 0 12px;
+      font-size:15px;
+      color:var(--text);
+    }
+
+    .withdraw-status{
+      margin-top:12px;
+      padding:10px;
+      border-radius:12px;
+      background: rgba(24,198,163,.08);
+      border:1px solid rgba(24,198,163,.20);
+      font-size:13px;
+      color:#a0f0d0;
     }
 
     .mono{
-      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
       word-break: break-all;
     }
   </style>
@@ -477,10 +411,11 @@
     </div>
 
     <div class="card">
-      <!-- HOME -->
+
+      <!-- TAP / HOME -->
       <div class="screen active" id="screenHome">
         <div class="balanceWrap">
-          <div class="balanceLabel" data-i18n="balance_label">BALANCE</div>
+          <div class="balanceLabel" data-i18n="balance_label">БАЛАНС</div>
           <div class="balance">
             <div id="balanceVal">0.0000</div>
             <span class="unit">USDT</span>
@@ -490,126 +425,139 @@
 
         <div class="coinWrap">
           <div class="coin" id="coin">
-            <div class="coinInner" id="coinInner">
-              <img id="logoImg" src="/static/logo.png" alt="USDT" />
+            <div class="coinInner">
+              <img id="logoImg" src="/static/logo.png?v=2" alt="USDT" />
             </div>
           </div>
         </div>
 
         <div class="stats">
           <div class="stat">
-            <div class="k" data-i18n="taps_left">TAPS LEFT</div>
+            <div class="k" data-i18n="taps_left">ОСТАЛОСЬ ТАПОВ</div>
             <div class="v"><span id="tapsLeft">—</span></div>
           </div>
           <div class="stat">
-            <div class="k" data-i18n="reward">REWARD</div>
+            <div class="k" data-i18n="reward">НАГРАДА</div>
             <div class="v">+<span id="rewardVal">0.0000</span> <small>USDT</small></div>
           </div>
         </div>
 
         <div class="hint" id="hintBox"></div>
-
-        <!-- PACKAGES -->
-        <div class="subCard" id="shopCard">
-          <h3 data-i18n="packages_title">PACKAGES</h3>
-          <div class="subline" data-i18n="packages_sub">
-            Buy a package to get taps and higher reward.
-          </div>
-
-          <div class="pkgGrid" id="pkgGrid"></div>
-
-          <!-- PAYMENT PANEL -->
-          <div class="subCard" id="payPanel" style="display:none; margin-top:12px;">
-            <h3 data-i18n="payment_title">PAYMENT</h3>
-            <div class="subline" id="payInfoLine"></div>
-
-            <div class="field">
-              <input id="payAddress" class="mono" readonly />
-              <button class="btn ghost" id="copyAddressBtn" data-i18n="copy_address">Copy address</button>
-            </div>
-
-            <div class="field">
-              <input id="payAmount" class="mono" readonly />
-              <button class="btn ghost" id="copyAmountBtn" data-i18n="copy_amount">Copy amount</button>
-            </div>
-
-            <div class="field">
-              <button class="btn ok" id="checkPayBtn" data-i18n="check_payment">Check payment</button>
-              <button class="btn danger" id="closePayBtn" data-i18n="close">Close</button>
-            </div>
-
-            <div class="subline" style="margin-top:8px">
-              <span class="muted" data-i18n="payment_note">
-                IMPORTANT: send the exact amount (10.xxxxxx). The server matches payment by amount.
-              </span>
-            </div>
-          </div>
-        </div>
       </div>
 
       <!-- INVITE -->
       <div class="screen" id="screenInvite">
         <div class="balanceWrap" style="padding-top:6px">
-          <div class="balanceLabel" data-i18n="invite_title">INVITE</div>
+          <div class="balanceLabel" data-i18n="invite_title">ПРИГЛАСИТЬ</div>
           <div class="subline" data-i18n="invite_sub">
-            Invite friends and earn 0.1 USDT for each friend.
+            Приглашай друзей и получай +0.1 USDT за каждого.
           </div>
           <div class="subline" data-i18n="invite_sub2">
-            0.1 USDT is credited after your referral makes 10,000 clicks and earns 1 USDT.
+            Бонус начисляется после 10 000 тапов реферала и заработка 1 USDT.
           </div>
         </div>
 
         <div class="row">
           <div class="box">
-            <h3 data-i18n="invited_count">INVITED</h3>
+            <h3 data-i18n="invited_count">ПРИГЛАШЕНО</h3>
             <div class="bigNum"><span id="invitedCount">0</span></div>
           </div>
           <div class="box">
-            <h3 data-i18n="invite_bonus">BONUS</h3>
+            <h3 data-i18n="invite_bonus">БОНУС</h3>
             <div class="bigNum">+<span id="inviteBonusTotal">0.0000</span> <span class="muted">USDT</span></div>
           </div>
         </div>
 
         <div class="subCard">
-          <h3 data-i18n="your_link">YOUR REFERRAL LINK</h3>
+          <h3 data-i18n="your_link">ТВОЯ РЕФЕРАЛЬНАЯ ССЫЛКА</h3>
           <div class="field">
             <input id="refLink" readonly />
-            <button class="btn" id="copyRef" data-i18n="copy">Copy</button>
-          </div>
-          <div class="subline" style="margin-top:8px">
-            <span class="muted">Важно:</span> ссылка ведёт в бота (чтобы сработал /start и рефералка).
+            <button class="btn" id="copyRef" data-i18n="copy">Копировать</button>
           </div>
         </div>
 
         <div class="subCard">
-          <h3 data-i18n="ref_list">REFERRALS</h3>
+          <h3 data-i18n="ref_list">РЕФЕРАЛЫ</h3>
           <div class="list" id="refList"></div>
         </div>
       </div>
 
-      <!-- CABINET -->
+      <!-- ACCOUNT / CABINET -->
       <div class="screen" id="screenCabinet">
         <div class="balanceWrap" style="padding-top:6px">
-          <div class="balanceLabel" data-i18n="account_title">ACCOUNT</div>
-          <div class="subline" data-i18n="account_sub">Server data</div>
+          <div class="balanceLabel" data-i18n="account_title">АККАУНТ</div>
         </div>
 
-        <div class="subCard" style="margin-top:0;">
-          <h3 data-i18n="account_balance">YOUR BALANCE</h3>
+        <div class="subCard">
+          <h3 data-i18n="account_balance">БАЛАНС</h3>
           <div class="bigNum"><span id="cabBalance">0.0000</span> <span class="muted">USDT</span></div>
         </div>
 
+        <!-- ПАКЕТЫ теперь здесь -->
         <div class="subCard">
-          <h3>SERVER</h3>
-          <div class="subline" id="serverLine">
-            userId: <b id="srvUserId">—</b><br>
-            status: <b id="srvStatus">—</b>
+          <h3 data-i18n="packages_title">ПАКЕТЫ</h3>
+          <div class="subline" data-i18n="packages_sub">
+            Выбери пакет, чтобы продолжить тапать и увеличить награду
+          </div>
+          <div class="pkgGrid" id="pkgGrid"></div>
+
+          <!-- панель оплаты (та же, что была раньше) -->
+          <div id="payPanel" style="display:none; margin-top:16px;">
+            <div class="subCard">
+              <h3 data-i18n="payment_title">ОПЛАТА</h3>
+              <div class="subline" id="payInfoLine"></div>
+              <div class="field">
+                <input id="payAddress" class="mono" readonly />
+                <button class="btn ghost" id="copyAddressBtn">Скопировать</button>
+              </div>
+              <div class="field">
+                <input id="payAmount" class="mono" readonly />
+                <button class="btn ghost" id="copyAmountBtn">Скопировать</button>
+              </div>
+              <div class="field" style="margin-top:12px;">
+                <button class="btn ok" id="checkPayBtn" data-i18n="check_payment">Проверить оплату</button>
+                <button class="btn danger" id="closePayBtn">Закрыть</button>
+              </div>
+              <div class="subline" style="margin-top:12px; font-size:12px;">
+                <span class="muted">⚠️ Отправляй точную сумму с копейками</span>
+              </div>
+            </div>
           </div>
         </div>
 
-        <div class="subCard">
-          <h3 data-i18n="tap_stats">TAP STATS</h3>
-          <div class="subline" id="tapStatsLine">—</div>
+        <!-- ВЫВОД СРЕДСТВ -->
+        <div class="withdrawBox" id="withdrawSection">
+          <h3>ВЫВОД СРЕДСТВ</h3>
+          
+          <div class="field">
+            <input type="number" id="withdrawAmount" placeholder="Сумма (мин. 20 USDT)" step="0.01" min="20" />
+          </div>
+
+          <div class="field" style="margin-top:10px;">
+            <select id="withdrawNetwork">
+              <option value="">Выберите сеть</option>
+              <option value="TRC20">TRC20 (Tron)</option>
+              <option value="BEP20">BEP20 (BSC)</option>
+              <option value="TON">TON</option>
+            </select>
+          </div>
+
+          <div class="field" style="margin-top:10px;">
+            <input type="text" id="withdrawAddress" placeholder="Адрес кошелька" />
+          </div>
+
+          <button class="btn ok" id="btnWithdraw" style="margin-top:14px; width:100%;">
+            Вывести средства
+          </button>
+
+          <div id="withdrawStatus" class="withdraw-status" style="display:none;"></div>
+        </div>
+
+        <!-- отладочная информация (можно убрать позже) -->
+        <div class="subCard" style="margin-top:16px; font-size:12px;">
+          userId: <b id="srvUserId">—</b><br>
+          taps left: <b id="srvTapsLeft">—</b><br>
+          tap reward: <b id="srvReward">—</b>
         </div>
       </div>
     </div>
@@ -617,116 +565,103 @@
 
   <div class="tabs">
     <div class="tabsInner">
-      <button class="tabBtn" id="tabInvite" data-i18n="tab_invite">Invite</button>
+      <button class="tabBtn" id="tabInvite" data-i18n="tab_invite">Пригласить</button>
       <button class="tabBtn active" id="tabHome" data-i18n="tab_home">TAP</button>
-      <button class="tabBtn" id="tabCabinet" data-i18n="tab_account">Account</button>
+      <button class="tabBtn" id="tabCabinet" data-i18n="tab_account">Аккаунт</button>
     </div>
   </div>
 
   <script>
-    // =========================
-    // CONFIG
-    // =========================
-    const BOT_USERNAME = "hfufh4fu4bot"; // без @
+    // ========================================
+    //   КОНФИГУРАЦИЯ — ВАЖНО!
+    // ========================================
+    const BOT_USERNAME = "hfufh4fu4bot";           // ← твой бот
+    const ADMIN_TG_ID   = 123456789;               // ← ТВОЙ Telegram ID !!!!!!!!
 
-    // =========================
-    // I18N
-    // =========================
+    // ========================================
+    //   ПЕРЕВОДЫ
+    // ========================================
     const I18N = {
       ru: {
         balance_label: "БАЛАНС",
-        taps_left: "ОСТАЛОСЬ ТАПОВ",
-        reward: "НАГРАДА",
+        taps_left: "ТАПОВ ОСТАЛОСЬ",
+        reward: "НАГРАДА ЗА ТАП",
         tab_invite: "Пригласить",
-        tab_home: "TAP",     // ✅ оставили латиницей
+        tab_home: "TAP",
         tab_account: "Аккаунт",
-        invite_title: "ПРИГЛАСИТЬ",
-        invite_sub: "Приглашай друзей и зарабатывай 0.1 USDT за каждого приведённого друга.",
-        invite_sub2: "0.1 USDT начисляется после того, как реферал сделает 10,000 тапов и заработает 1 USDT.",
+        invite_title: "ПРИГЛАСИТЬ ДРУЗЕЙ",
+        invite_sub: "Приглашай друзей и получай +0.1 USDT за каждого",
+        invite_sub2: "Бонус начисляется после 10 000 тапов и 1 USDT заработка реферала",
         invited_count: "ПРИГЛАШЕНО",
         invite_bonus: "БОНУС",
-        your_link: "ТВОЯ РЕФ-СЫЛКА",
+        your_link: "ТВОЯ РЕФЕРАЛЬНАЯ ССЫЛКА",
         copy: "Копировать",
         ref_list: "РЕФЕРАЛЫ",
         account_title: "АККАУНТ",
-        account_sub: "Данные с сервера",
-        account_balance: "ТВОЙ БАЛАНС",
-        no_refs: "Пока никто не пришёл",
+        account_balance: "БАЛАНС",
         packages_title: "ПАКЕТЫ",
-        packages_sub: "Купи пакет, чтобы получить тапы и увеличить награду.",
+        packages_sub: "Выбери пакет, чтобы продолжить тапать",
         buy: "Купить",
         payment_title: "ОПЛАТА",
         copy_address: "Скопировать адрес",
         copy_amount: "Скопировать сумму",
         check_payment: "Проверить оплату",
         close: "Закрыть",
-        payment_note: "ВАЖНО: переводи точную сумму (10.xxxxxx). Сервер найдёт платёж по сумме.",
-        pay_created: "Инвойс создан. Переведи сумму на адрес ниже.",
-        paid_ok: "Оплата найдена ✅ Пакет выдан.",
-        not_paid: "Платёж пока не найден. Проверь позже.",
+        payment_note: "Отправляй ТОЧНУЮ сумму (с копейками)",
+        pay_created: "Создан инвойс. Переведи указанную сумму ↓",
+        paid_ok: "Оплата найдена ✓ Пакет активирован",
+        not_paid: "Пока не видно. Подожди 1–5 минут",
         server_error: "Ошибка сервера",
-        tap_stats: "СТАТИСТИКА TAP",
-        hint: () => `🎁 <b>Рефералка работает через бота:</b><br><span class="muted">Человек должен открыть ссылку и нажать Start.</span>`
+        no_refs: "Пока никого нет",
+        hint: () => `🎁 <b>Рефералка работает через бота</b><br>Человек должен открыть ссылку и нажать Start`
       },
       en: {
         balance_label: "BALANCE",
         taps_left: "TAPS LEFT",
-        reward: "REWARD",
+        reward: "REWARD PER TAP",
         tab_invite: "Invite",
-        tab_home: "TAP",     // ✅ оставили латиницей
+        tab_home: "TAP",
         tab_account: "Account",
-        invite_title: "INVITE",
-        invite_sub: "Invite friends and earn 0.1 USDT for each invited friend.",
-        invite_sub2: "0.1 USDT is credited after referral makes 10,000 taps and earns 1 USDT.",
+        invite_title: "INVITE FRIENDS",
+        invite_sub: "Invite friends and get +0.1 USDT each",
+        invite_sub2: "Bonus credited after referral reaches 10,000 taps and 1 USDT earned",
         invited_count: "INVITED",
         invite_bonus: "BONUS",
-        your_link: "YOUR REF LINK",
+        your_link: "YOUR REFERRAL LINK",
         copy: "Copy",
         ref_list: "REFERRALS",
         account_title: "ACCOUNT",
-        account_sub: "Server data",
-        account_balance: "YOUR BALANCE",
-        no_refs: "No one joined yet",
+        account_balance: "BALANCE",
         packages_title: "PACKAGES",
-        packages_sub: "Buy a package to get taps and higher reward.",
+        packages_sub: "Choose a package to continue tapping",
         buy: "Buy",
         payment_title: "PAYMENT",
         copy_address: "Copy address",
         copy_amount: "Copy amount",
         check_payment: "Check payment",
         close: "Close",
-        payment_note: "IMPORTANT: send the exact amount (10.xxxxxx). The server matches payment by amount.",
-        pay_created: "Invoice created. Send the amount to the address below.",
-        paid_ok: "Payment found ✅ Package granted.",
-        not_paid: "Payment not found yet. Check again later.",
+        payment_note: "Send EXACT amount (with decimals)",
+        pay_created: "Invoice created. Send the exact amount below",
+        paid_ok: "Payment detected ✓ Package activated",
+        not_paid: "Not seen yet. Wait a few minutes",
         server_error: "Server error",
-        tap_stats: "TAP STATS",
-        hint: () => `🎁 <b>Referral works via bot:</b><br><span class="muted">User must open link and press Start.</span>`
+        no_refs: "No referrals yet",
+        hint: () => `🎁 <b>Referral via bot</b><br>User must open link and press Start`
       }
     };
 
-    // =========================
-    // Telegram init
-    // =========================
     const tg = window.Telegram?.WebApp;
     if (tg) { tg.ready(); tg.expand(); }
 
-    function detectLang(){
-      const tgLang = (tg?.initDataUnsafe?.user?.language_code || "").toLowerCase();
-      if (tgLang.startsWith("en")) return "en";
-      return "ru";
-    }
-
-    // =========================
-    // State
-    // =========================
+    // ========================================
+    //   СОСТОЯНИЕ
+    // ========================================
     const state = {
       lang: "ru",
       userId: null,
       fullName: "User",
 
       balance: 0,
-
       tapsLeft: 0,
       tapsTotal: 0,
       tapReward: 0,
@@ -736,509 +671,444 @@
       invitedCount: 0,
       bonusTotal: 0,
 
-      packages: null,   // { "1":{...}, ... }
+      packages: null,
       payAddress: "",
-      payNetwork: "",
-      currentInvoice: null, // {id, amount_usdt, address, ...}
+      currentInvoice: null,
+
       isTapping: false,
-      tapCooldownUntil: 0
+      tapCooldownUntil: 0,
+
+      // для вывода
+      withdrawInProgress: false
     };
 
-    function fmtBalance(x){
-      x = Number(x || 0);
-      if (!Number.isFinite(x)) x = 0;
-      if (x < 1) return x.toFixed(4);
-      if (x < 100) return x.toFixed(3);
-      return x.toFixed(2);
+    function fmt(x, decimals = 4) {
+      if (!Number.isFinite(x)) return "0.0000";
+      return Number(x).toFixed(decimals);
     }
 
-    function fmtReward(x){
-      x = Number(x || 0);
-      if (!Number.isFinite(x)) x = 0;
-      if (x < 1) return x.toFixed(4);
-      return x.toFixed(3);
+    function escapeHtml(s) {
+      return String(s||"").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[c]));
     }
 
-    function escapeHtml(s){
-      return String(s || "").replace(/[&<>"']/g, (c) => ({
-        "&":"&amp;",
-        "<":"&lt;",
-        ">":"&gt;",
-        '"':"&quot;",
-        "'":"&#039;"
-      }[c]));
+    function detectLang() {
+      const code = (tg?.initDataUnsafe?.user?.language_code || "").toLowerCase();
+      return code.startsWith("en") ? "en" : "ru";
     }
 
-    function initFromTelegram(){
+    function initUser() {
       const u = tg?.initDataUnsafe?.user;
-      if (u){
+      if (u) {
         state.userId = u.id;
-        const first = (u.first_name || "").trim();
-        const last  = (u.last_name || "").trim();
-        state.fullName = (first + " " + last).trim() || (u.username ? `@${u.username}` : "User");
+        const name = [u.first_name, u.last_name].filter(Boolean).join(" ").trim();
+        state.fullName = name || (u.username ? `@${u.username}` : "User");
       } else {
-        state.userId = 999001;
-        state.fullName = "Browser User";
+        state.userId = 999999;
+        state.fullName = "Test User";
       }
       document.getElementById("userName").textContent = state.fullName;
       state.lang = detectLang();
     }
 
-    async function apiPost(path, payload){
-      const resp = await fetch(path, {
-        method: "POST",
-        headers: { "Content-Type":"application/json" },
-        body: JSON.stringify(payload || {})
-      });
-      const text = await resp.text();
-      if (!resp.ok) throw new Error(text);
-      try { return JSON.parse(text); } catch(e){ return {}; }
-    }
-
-    async function apiGet(path){
-      const resp = await fetch(path);
-      const text = await resp.text();
-      if (!resp.ok) throw new Error(text);
-      try { return JSON.parse(text); } catch(e){ return {}; }
-    }
-
-    function getRefLink(){
-      if (!state.userId) return "";
-      return `https://t.me/${BOT_USERNAME}?start=ref_${state.userId}`;
-    }
-
-    function showToast(title, message){
-      if (tg?.showPopup){
-        tg.showPopup({
-          title: title || "Info",
-          message: message || "",
-          buttons: [{type:"ok"}]
+    async function apiPost(path, body = {}) {
+      try {
+        const r = await fetch(path, {
+          method: "POST",
+          headers: {"Content-Type": "application/json"},
+          body: JSON.stringify({...body, lang: state.lang})
         });
-        return;
+        const text = await r.text();
+        if (!r.ok) throw new Error(text);
+        return JSON.parse(text);
+      } catch (err) {
+        console.error(path, err);
+        return {ok:false, error: err.message};
       }
-      alert((title ? title + "\n" : "") + (message || ""));
     }
 
-    async function copyText(text){
-      try{
-        await navigator.clipboard.writeText(text);
+    async function apiGet(path) {
+      try {
+        const r = await fetch(path);
+        if (!r.ok) throw new Error(await r.text());
+        return await r.json();
+      } catch (err) {
+        console.error(path, err);
+        return {ok:false};
+      }
+    }
+
+    function getRefLink() {
+      return state.userId ? `https://t.me/${BOT_USERNAME}?start=ref_${state.userId}` : "";
+    }
+
+    function showToast(msg, title = "") {
+      if (tg?.showPopup) {
+        tg.showPopup({title: title || " ", message: msg, buttons:[{type:"ok"}]});
+      } else {
+        alert((title ? title + "\n" : "") + msg);
+      }
+    }
+
+    async function copyText(txt) {
+      try {
+        await navigator.clipboard.writeText(txt);
         return true;
-      }catch(e){
+      } catch {
         return false;
       }
     }
 
-    // =========================
-    // UI: screens
-    // =========================
-    const screenHome = document.getElementById("screenHome");
-    const screenInvite = document.getElementById("screenInvite");
-    const screenCabinet = document.getElementById("screenCabinet");
+    // ========================================
+    //   UI — переключение экранов
+    // ========================================
+    function showScreen(name) {
+      document.querySelectorAll(".screen").forEach(s => s.classList.remove("active"));
+      document.querySelectorAll(".tabBtn").forEach(b => b.classList.remove("active"));
 
-    const tabInvite = document.getElementById("tabInvite");
-    const tabHome = document.getElementById("tabHome");
-    const tabCabinet = document.getElementById("tabCabinet");
-
-    function showScreen(name){
-      screenHome.classList.toggle("active", name === "home");
-      screenInvite.classList.toggle("active", name === "invite");
-      screenCabinet.classList.toggle("active", name === "cabinet");
-
-      tabInvite.classList.toggle("active", name === "invite");
-      tabHome.classList.toggle("active", name === "home");
-      tabCabinet.classList.toggle("active", name === "cabinet");
+      document.getElementById(`screen${name.charAt(0).toUpperCase() + name.slice(1)}`).classList.add("active");
+      document.getElementById(`tab${name.charAt(0).toUpperCase() + name.slice(1)}`).classList.add("active");
     }
 
-    tabInvite.addEventListener("click", () => showScreen("invite"));
-    tabHome.addEventListener("click", () => showScreen("home"));
-    tabCabinet.addEventListener("click", () => showScreen("cabinet"));
+    document.getElementById("tabHome").onclick    = () => showScreen("home");
+    document.getElementById("tabInvite").onclick  = () => showScreen("invite");
+    document.getElementById("tabCabinet").onclick = () => showScreen("cabinet");
 
-    // =========================
-    // Render
-    // =========================
-    function renderHome(){
-      document.getElementById("balanceVal").textContent = fmtBalance(state.balance);
-
-      document.getElementById("tapsLeft").textContent =
-        Number.isFinite(Number(state.tapsLeft)) ? String(state.tapsLeft) : "—";
-
-      document.getElementById("rewardVal").textContent = fmtReward(state.tapReward || 0);
-
-      const r = Number(state.tapReward || 0);
-      document.getElementById("planLine").textContent = r > 0
-        ? `+${fmtReward(r)} USDT / TAP`
-        : (state.lang === "ru" ? "Купи пакет, чтобы начать" : "Buy a package to start");
-
-      document.getElementById("hintBox").innerHTML = I18N[state.lang].hint();
-
-      renderPackages();
-    }
-
-    function renderInvite(){
-      const input = document.getElementById("refLink");
-      input.value = getRefLink();
-
-      document.getElementById("invitedCount").textContent = String(state.invitedCount || 0);
-      document.getElementById("inviteBonusTotal").textContent = Number(state.bonusTotal || 0).toFixed(4);
-
-      const list = document.getElementById("refList");
-      list.innerHTML = "";
-
-      if (!state.referrals || !state.referrals.length){
-        const empty = document.createElement("div");
-        empty.className = "item";
-        empty.innerHTML = `<span class="muted">${I18N[state.lang].no_refs}</span><span class="muted">—</span>`;
-        list.appendChild(empty);
+    // ========================================
+    //   Рендер пакетов (теперь в Account)
+    // ========================================
+    function renderPackages() {
+      const grid = document.getElementById("pkgGrid");
+      if (!state.packages) {
+        grid.innerHTML = '<div style="color:var(--muted);padding:12px;">Загрузка...</div>';
         return;
       }
 
-      state.referrals.forEach((r)=>{
-        const name = (r.name || "User").toString();
-        const reward = Number(r.reward_usdt || 0).toFixed(2);
-        const it = document.createElement("div");
-        it.className = "item";
-        it.innerHTML = `<span>${escapeHtml(name)}</span><span class="muted">+${reward} USDT</span>`;
-        list.appendChild(it);
-      });
-    }
+      grid.innerHTML = "";
+      const order = ["1","2","3"]; // предполагаем 3 пакета
 
-    function renderCabinet(statusText){
-      document.getElementById("cabBalance").textContent = fmtBalance(state.balance);
-      document.getElementById("srvUserId").textContent = String(state.userId || "—");
-      document.getElementById("srvStatus").textContent = statusText || "ok";
+      order.forEach(key => {
+        const p = state.packages[key];
+        if (!p) return;
 
-      const line = document.getElementById("tapStatsLine");
-      line.innerHTML =
-        `taps_total: <b>${state.tapsTotal ?? "—"}</b><br>` +
-        `taps_left: <b>${state.tapsLeft ?? "—"}</b><br>` +
-        `tap_reward: <b>${fmtReward(state.tapReward || 0)}</b><br>` +
-        `cap_remaining: <b>${fmtBalance(state.capRemaining || 0)}</b>`;
-    }
+        let emoji = "🟢";
+        let name = p.name || `Пакет ${key}`;
 
-    function setLang(lang){
-      state.lang = lang;
+        if (key === "1") { emoji = "👶"; name = "Новичок"; }
+        if (key === "2") { emoji = "⭐"; name = "Профи";   }
+        if (key === "3") { emoji = "🐳"; name = "Кит";     }
 
-      document.getElementById("btnRU").classList.toggle("active", lang==="ru");
-      document.getElementById("btnEN").classList.toggle("active", lang==="en");
-
-      document.querySelectorAll("[data-i18n]").forEach(el=>{
-        const key = el.getAttribute("data-i18n");
-        const val = I18N[lang][key];
-        if (typeof val === "string") el.textContent = val;
-      });
-
-      renderHome();
-      renderInvite();
-      renderCabinet("ok");
-    }
-
-    document.getElementById("btnRU").addEventListener("click", ()=>setLang("ru"));
-    document.getElementById("btnEN").addEventListener("click", ()=>setLang("en"));
-
-    // =========================
-    // PACKAGES + PAYMENT
-    // =========================
-    const pkgGrid = document.getElementById("pkgGrid");
-    const payPanel = document.getElementById("payPanel");
-    const payInfoLine = document.getElementById("payInfoLine");
-    const payAddressInput = document.getElementById("payAddress");
-    const payAmountInput = document.getElementById("payAmount");
-    const copyAddressBtn = document.getElementById("copyAddressBtn");
-    const copyAmountBtn = document.getElementById("copyAmountBtn");
-    const checkPayBtn = document.getElementById("checkPayBtn");
-    const closePayBtn = document.getElementById("closePayBtn");
-
-    function renderPackages(){
-      if (!state.packages){
-        pkgGrid.innerHTML = `<div class="item"><span class="muted">Loading…</span><span class="muted">—</span></div>`;
-        return;
-      }
-
-      // state.packages — объект вида {"1":{...},"2":{...}}
-      const keys = Object.keys(state.packages).sort((a,b)=>Number(a)-Number(b));
-      pkgGrid.innerHTML = "";
-
-      keys.forEach((k)=>{
-        const p = state.packages[k];
-        const id = Number(k);
-
-        const name = p?.name ?? `Package ${id}`;
-        const price = Number(p?.price ?? 0);
-        const taps = Number(p?.taps ?? 0);
-        const reward = Number(p?.reward ?? 0);
-        const cap = Number(p?.cap ?? 0);
-
-        const wrap = document.createElement("div");
-        wrap.className = "pkg";
-
-        wrap.innerHTML = `
+        const div = document.createElement("div");
+        div.className = "pkg";
+        div.innerHTML = `
           <div class="pkgTop">
             <div>
-              <div class="pkgName">${escapeHtml(name)}</div>
+              <div class="pkgName">${emoji} ${name}</div>
               <div class="pkgMeta">
-                taps: <b>${taps.toLocaleString()}</b><br>
-                reward: <b>${fmtReward(reward)}</b> USDT / TAP<br>
-                max profit: <b>${fmtBalance(cap)}</b> USDT
+                тапов: <b>${Number(p.taps||0).toLocaleString()}</b><br>
+                награда: <b>${fmt(p.reward||0,4)}</b> USDT / тап<br>
+                макс. профит: <b>${fmt(p.cap||0,2)}</b> USDT
               </div>
             </div>
-            <div class="pkgPrice">${fmtBalance(price)} USDT</div>
+            <div class="pkgPrice">${fmt(p.price||0,2)} USDT</div>
           </div>
-          <div class="pkgActions">
-            <button class="btn ok" data-buy-id="${id}">${I18N[state.lang].buy}</button>
-          </div>
+          <button class="btn ok" data-pkg-id="${key}" style="margin-top:12px;width:100%;">
+            ${I18N[state.lang].buy}
+          </button>
         `;
-
-        pkgGrid.appendChild(wrap);
+        grid.appendChild(div);
       });
 
-      pkgGrid.querySelectorAll("[data-buy-id]").forEach(btn=>{
-        btn.addEventListener("click", async ()=>{
-          const id = Number(btn.getAttribute("data-buy-id"));
-          await createInvoice(id);
-        });
+      grid.querySelectorAll("[data-pkg-id]").forEach(btn => {
+        btn.onclick = () => createInvoice(btn.dataset.pkgId);
       });
     }
 
-    function openPayPanel(invoice){
+    // ========================================
+    //   Пополнение (старая логика сохранена)
+    // ========================================
+    const payPanel   = document.getElementById("payPanel");
+    const payInfo    = document.getElementById("payInfoLine");
+    const payAddr    = document.getElementById("payAddress");
+    const payAmnt    = document.getElementById("payAmount");
+
+    function openPayment(invoice) {
       state.currentInvoice = invoice;
-
+      payInfo.textContent = I18N[state.lang].pay_created;
+      payAddr.value  = invoice.address  || "";
+      payAmnt.value  = fmt(invoice.amount_usdt || 0, 6);
       payPanel.style.display = "block";
-      payInfoLine.textContent = I18N[state.lang].pay_created;
-
-      payAddressInput.value = invoice.address || state.payAddress || "";
-      payAmountInput.value = String(invoice.amount_usdt ?? "");
-
-      // small scroll to panel
-      payPanel.scrollIntoView({behavior:"smooth", block:"start"});
+      payPanel.scrollIntoView({behavior:"smooth"});
     }
 
-    function closePayPanel(){
-      state.currentInvoice = null;
+    document.getElementById("closePayBtn").onclick = () => {
       payPanel.style.display = "none";
+      state.currentInvoice = null;
+    };
+
+    document.getElementById("copyAddressBtn").onclick = async () => {
+      const ok = await copyText(payAddr.value);
+      showToast(ok ? "Адрес скопирован" : "Ошибка копирования");
+    };
+
+    document.getElementById("copyAmountBtn").onclick = async () => {
+      const ok = await copyText(payAmnt.value);
+      showToast(ok ? "Сумма скопирована" : "Ошибка копирования");
+    };
+
+    async function createInvoice(pkgId) {
+      const res = await apiPost("/api/payments/create", { tg_id: state.userId, package_id: pkgId });
+      if (res?.ok && res.invoice) {
+        openPayment(res.invoice);
+      } else {
+        showToast(res?.error || "Не удалось создать инвойс");
+      }
     }
 
-    closePayBtn.addEventListener("click", closePayPanel);
+    document.getElementById("checkPayBtn").onclick = async () => {
+      if (!state.currentInvoice?.id) return;
+      const res = await apiPost("/api/payments/check", {
+        tg_id: state.userId,
+        invoice_id: state.currentInvoice.id
+      });
+      if (res?.ok) {
+        if (res.paid) {
+          showToast(I18N[state.lang].paid_ok);
+          payPanel.style.display = "none";
+          syncWithServer();
+        } else {
+          showToast(I18N[state.lang].not_paid);
+        }
+      } else {
+        showToast("Ошибка проверки");
+      }
+    };
 
-    copyAddressBtn.addEventListener("click", async ()=>{
-      const ok = await copyText(payAddressInput.value);
-      showToast(ok ? "OK" : "Copy", ok ? "Address copied ✅" : "Copy failed");
-    });
+    // ========================================
+    //   ВЫВОД СРЕДСТВ
+    // ========================================
+    document.getElementById("btnWithdraw").onclick = async () => {
+      if (state.withdrawInProgress) return;
 
-    copyAmountBtn.addEventListener("click", async ()=>{
-      const ok = await copyText(payAmountInput.value);
-      showToast(ok ? "OK" : "Copy", ok ? "Amount copied ✅" : "Copy failed");
-    });
+      const amt  = Number(document.getElementById("withdrawAmount").value);
+      const net  = document.getElementById("withdrawNetwork").value;
+      const addr = document.getElementById("withdrawAddress").value.trim();
 
-    async function createInvoice(packageId){
-      if (!state.userId){
-        showToast("Error", "No userId");
+      if (amt < 20) {
+        showToast("Минимальная сумма вывода — 20 USDT");
         return;
       }
-      try{
-        const res = await apiPost("/api/payments/create", {
-          tg_id: state.userId,
-          package_id: packageId
-        });
-
-        if (res && res.ok && res.invoice){
-          openPayPanel(res.invoice);
-        } else {
-          showToast("Error", "Bad response");
-        }
-      }catch(e){
-        showToast("Error", I18N[state.lang].server_error);
-        console.log(e);
-      }
-    }
-
-    checkPayBtn.addEventListener("click", async ()=>{
-      if (!state.currentInvoice?.id){
-        showToast("Error", "No invoice");
+      if (!net) {
+        showToast("Выберите сеть");
         return;
       }
-      try{
-        const res = await apiPost("/api/payments/check", {
+      if (!addr || addr.length < 10) {
+        showToast("Введите корректный адрес");
+        return;
+      }
+
+      state.withdrawInProgress = true;
+      const btn = document.getElementById("btnWithdraw");
+      btn.textContent = "Отправка...";
+      btn.disabled = true;
+
+      try {
+        const res = await apiPost("/api/withdraw/create", {
           tg_id: state.userId,
-          invoice_id: state.currentInvoice.id
+          amount: amt,
+          network: net,
+          address: addr,
+          full_name: state.fullName
         });
 
-        if (res && res.ok){
-          if (res.paid){
-            showToast("OK", I18N[state.lang].paid_ok);
-            closePayPanel();
-            await syncWithServer(); // подтянем новые taps/reward
-            showScreen("home");
-          } else {
-            showToast("Info", I18N[state.lang].not_paid);
-          }
+        if (res.ok) {
+          document.getElementById("withdrawStatus").innerHTML =
+            `✅ Заявка создана<br>Сумма: ${fmt(amt,2)} USDT<br>Сеть: ${net}<br>Обработка: до 24 часов`;
+          document.getElementById("withdrawStatus").style.display = "block";
+
+          showToast("Заявка отправлена\nОжидайте до 24 часов");
         } else {
-          showToast("Error", I18N[state.lang].server_error);
+          showToast(res.error || "Ошибка создания заявки");
         }
-      }catch(e){
-        showToast("Error", I18N[state.lang].server_error);
-        console.log(e);
+      } catch (err) {
+        showToast("Ошибка соединения");
+      } finally {
+        state.withdrawInProgress = false;
+        btn.textContent = "Вывести средства";
+        btn.disabled = false;
       }
-    });
+    };
 
-    // =========================
-    // Server sync
-    // =========================
-    async function syncWithServer(){
-      // 0) packages
-      try{
-        const p = await apiGet("/api/packages");
-        if (p && p.ok){
-          state.packages = p.packages || null;
-          state.payAddress = p.address || "";
-          state.payNetwork = p.network || "";
-        }
-      }catch(e){
-        // ignore
-      }
-
-      // 1) upsert себя
-      try{
-        await apiPost("/api/user/upsert", { tg_id: state.userId });
-      }catch(e){
-        console.log("upsert failed:", e);
-      }
-
-      // 2) user data
-      try{
-        const me = await apiGet(`/api/user/${state.userId}`);
-        if (me && me.ok){
-          state.balance = Number(me.balance?.balance_usdt || 0);
-
-          state.tapsLeft = Number(me.taps?.taps_available ?? 0);
-          state.tapsTotal = Number(me.taps?.taps_total ?? 0);
-          state.tapReward = Number(me.taps?.tap_reward ?? 0);
-          state.capRemaining = Number(me.taps?.earn_cap_remaining ?? 0);
-
-          renderHome();
-          renderCabinet("ok");
-        } else {
-          renderCabinet("user not found");
-        }
-      }catch(e){
-        console.log("get user failed:", e);
-        renderCabinet("server error");
-      }
-
-      // 3) referrals (если endpoint есть — отлично, если нет — просто тишина)
-      try{
-        const r = await apiGet(`/api/referrals/${state.userId}`);
-        if (r && r.ok){
-          state.referrals = Array.isArray(r.referrals) ? r.referrals : [];
-          state.invitedCount = Number(r.invited_count || 0);
-          state.bonusTotal = Number(r.bonus_total || 0);
-          renderInvite();
-        }
-      }catch(e){
-        // ignore
-      }
-    }
-
-    // =========================
-    // Copy link button
-    // =========================
-    document.getElementById("copyRef").addEventListener("click", async ()=>{
-      const link = getRefLink();
-      const input = document.getElementById("refLink");
-      input.value = link;
-
-      let ok = await copyText(link);
-      if (!ok){
-        input.select();
-        try { document.execCommand("copy"); ok = true; } catch(e){}
-      }
-
-      showToast(state.lang === "ru" ? "Готово" : "Done", ok ? "✅" : "❌");
-    });
-
-    // =========================
-    // Tap logic (REAL TAP)
-    // =========================
+    // ========================================
+    //   TAP логика + проверка на 0 тапов
+    // ========================================
     const coin = document.getElementById("coin");
 
-    function spawnPlusText(x, y, text){
-      const plus = document.createElement("div");
-      plus.className = "plus";
-      plus.style.left = x + "px";
-      plus.style.top = y + "px";
-      plus.textContent = text;
-      coin.appendChild(plus);
-      setTimeout(()=>plus.remove(), 900);
+    function spawnPlus(x, y, text) {
+      const el = document.createElement("div");
+      el.className = "plus";
+      el.style.left = x + "px";
+      el.style.top  = y + "px";
+      el.textContent = text;
+      coin.appendChild(el);
+      setTimeout(()=>el.remove(), 900);
     }
 
-    function getLocalXY(e){
-      const rect = coin.getBoundingClientRect();
-      const clientX = (e.touches ? e.touches[0].clientX : e.clientX);
-      const clientY = (e.touches ? e.touches[0].clientY : e.clientY);
-      return { x: clientX - rect.left, y: clientY - rect.top };
+    function tapXY(e) {
+      const r = coin.getBoundingClientRect();
+      const t = e.touches ? e.touches[0] : e;
+      return { x: t.clientX - r.left, y: t.clientY - r.top };
     }
 
-    async function doTap(e){
+    async function handleTap(e) {
       e.preventDefault();
+      if (Date.now() < state.tapCooldownUntil) return;
+      state.tapCooldownUntil = Date.now() + 120;
 
-      const now = Date.now();
-      if (now < state.tapCooldownUntil) return;
-      state.tapCooldownUntil = now + 120;
+      const {x,y} = tapXY(e);
 
-      const {x,y} = getLocalXY(e);
-
-      // если taps закончились
-      if ((state.tapsLeft ?? 0) <= 0 || (state.tapReward ?? 0) <= 0 || (state.capRemaining ?? 0) <= 0){
-        spawnPlusText(x, y, "+0.0000");
+      if (state.tapsLeft <= 0 || state.tapReward <= 0) {
+        spawnPlus(x, y, "+0.0000");
+        showToast("Тапы закончились", "Купи пакет → Аккаунт");
         return;
       }
 
-      // локальная анимация сразу
-      spawnPlusText(x, y, "+" + fmtReward(state.tapReward || 0));
+      spawnPlus(x, y, "+" + fmt(state.tapReward, 4));
 
-      // отправляем на сервер
       if (state.isTapping) return;
       state.isTapping = true;
 
-      try{
-        const res = await apiPost("/api/tap", { tg_id: state.userId, taps: 1 });
-        if (res && res.ok){
-          state.balance = Number(res.balance_usdt ?? state.balance ?? 0);
-          state.tapsLeft = Number(res.taps_available ?? state.tapsLeft ?? 0);
-          state.tapsTotal = Number(res.taps_total ?? state.tapsTotal ?? 0);
-          state.tapReward = Number(res.tap_reward ?? state.tapReward ?? 0);
-          state.capRemaining = Number(res.earn_cap_remaining ?? state.capRemaining ?? 0);
-
+      try {
+        const res = await apiPost("/api/tap", { tg_id: state.userId });
+        if (res.ok) {
+          Object.assign(state, {
+            balance:     Number(res.balance_usdt || state.balance),
+            tapsLeft:    Number(res.taps_available || 0),
+            tapsTotal:   Number(res.taps_total || state.tapsTotal),
+            tapReward:   Number(res.tap_reward || state.tapReward),
+            capRemaining:Number(res.earn_cap_remaining || 0)
+          });
           renderHome();
-          renderCabinet("ok");
         }
-      }catch(err){
-        console.log(err);
-      }finally{
+      } finally {
         state.isTapping = false;
       }
     }
 
-    coin.addEventListener("pointerdown", doTap);
-    coin.addEventListener("touchstart", doTap, { passive:false });
+    coin.addEventListener("pointerdown", handleTap);
+    coin.addEventListener("touchstart", handleTap, {passive:false});
 
-    // =========================
-    // Logo cache bust
-    // =========================
-    const logoImg = document.getElementById("logoImg");
-    logoImg.src = `/static/logo.png?v=${Date.now()}`;
-    logoImg.addEventListener("error", ()=>{
-      const inner = document.getElementById("coinInner");
-      inner.innerHTML = `<div style="font-weight:900; letter-spacing:.08em; color:#dff6ff">USDT</div>`;
-    });
+    // ========================================
+    //   Рендер домашнего экрана
+    // ========================================
+    function renderHome() {
+      document.getElementById("balanceVal").textContent = fmt(state.balance, state.balance < 1 ? 4 : 2);
+      document.getElementById("tapsLeft").textContent   = state.tapsLeft || "—";
+      document.getElementById("rewardVal").textContent  = fmt(state.tapReward || 0, 4);
 
-    // =========================
-    // BOOT
-    // =========================
-    (function boot(){
-      initFromTelegram();
-      setLang(state.lang);
+      const r = Number(state.tapReward || 0);
+      document.getElementById("planLine").textContent = r > 0
+        ? `+${fmt(r,4)} USDT / тап`
+        : (state.lang === "ru" ? "Купи пакет в разделе Аккаунт" : "Buy package in Account");
+
+      document.getElementById("hintBox").innerHTML = I18N[state.lang].hint();
+    }
+
+    function renderInvite() {
+      document.getElementById("refLink").value = getRefLink();
+      document.getElementById("invitedCount").textContent = state.invitedCount || 0;
+      document.getElementById("inviteBonusTotal").textContent = fmt(state.bonusTotal || 0, 4);
+
+      const list = document.getElementById("refList");
+      list.innerHTML = "";
+
+      if (!state.referrals?.length) {
+        list.innerHTML = `<div class="item muted">${I18N[state.lang].no_refs}</div>`;
+        return;
+      }
+
+      state.referrals.forEach(r => {
+        const div = document.createElement("div");
+        div.className = "item";
+        div.innerHTML = `<span>${escapeHtml(r.name||"")}</span><span>+${fmt(r.reward_usdt||0,2)} USDT</span>`;
+        list.appendChild(div);
+      });
+    }
+
+    function setLanguage(lng) {
+      state.lang = lng;
+      document.getElementById("btnRU").classList.toggle("active", lng==="ru");
+      document.getElementById("btnEN").classList.toggle("active", lng==="en");
+
+      document.querySelectorAll("[data-i18n]").forEach(el => {
+        const k = el.dataset.i18n;
+        if (I18N[lng][k]) el.textContent = I18N[lng][k];
+      });
+
+      renderHome();
+      renderInvite();
+      renderPackages();
+    }
+
+    document.getElementById("btnRU").onclick = () => setLanguage("ru");
+    document.getElementById("btnEN").onclick = () => setLanguage("en");
+
+    // ========================================
+    //   Синхронизация с сервером
+    // ========================================
+    async function syncWithServer() {
+      // пакеты
+      const pkgs = await apiGet("/api/packages");
+      if (pkgs?.ok) {
+        state.packages = pkgs.packages || {};
+        renderPackages();
+      }
+
+      // данные пользователя
+      const me = await apiGet(`/api/user/${state.userId}`);
+      if (me?.ok) {
+        Object.assign(state, {
+          balance:     Number(me.balance?.balance_usdt || 0),
+          tapsLeft:    Number(me.taps?.taps_available || 0),
+          tapsTotal:   Number(me.taps?.taps_total || 0),
+          tapReward:   Number(me.taps?.tap_reward || 0),
+          capRemaining:Number(me.taps?.earn_cap_remaining || 0)
+        });
+
+        document.getElementById("cabBalance").textContent = fmt(state.balance, 4);
+        document.getElementById("srvUserId").textContent  = state.userId;
+        document.getElementById("srvTapsLeft").textContent= state.tapsLeft;
+        document.getElementById("srvReward").textContent  = fmt(state.tapReward,4);
+
+        renderHome();
+      }
+
+      // рефералы
+      const refs = await apiGet(`/api/referrals/${state.userId}`);
+      if (refs?.ok) {
+        state.referrals    = refs.referrals || [];
+        state.invitedCount = Number(refs.invited_count || 0);
+        state.bonusTotal   = Number(refs.bonus_total || 0);
+        renderInvite();
+      }
+    }
+
+    // Копировать реф-ссылку
+    document.getElementById("copyRef").onclick = async () => {
+      const link = getRefLink();
+      const ok = await copyText(link);
+      showToast(ok ? "Ссылка скопирована!" : "Ошибка");
+    };
+
+    // ========================================
+    //   СТАРТ
+    // ========================================
+    (function init() {
+      initUser();
+      setLanguage(state.lang);
       showScreen("home");
       syncWithServer();
+      // можно добавить периодическую синхронизацию каждые 30–60 сек
+      // setInterval(syncWithServer, 45000);
     })();
   </script>
 </body>
