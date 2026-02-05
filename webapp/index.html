@@ -335,6 +335,13 @@
       background: rgba(255,77,77,.14);
       border-color: rgba(255,77,77,.22);
     }
+    .btn.max {
+      background: rgba(45,125,255,.15);
+      border-color: rgba(45,125,255,.30);
+      padding: 10px 16px;
+      font-size: 13px;
+      min-width: 60px;
+    }
 
     .pkgGrid{
       display:flex;
@@ -381,6 +388,15 @@
       margin:0 0 12px;
       font-size:15px;
       color:var(--text);
+    }
+    .withdraw-info {
+      font-size: 13px;
+      color: var(--muted);
+      margin-bottom: 12px;
+      line-height: 1.4;
+    }
+    .withdraw-info b {
+      color: var(--text);
     }
 
     .withdraw-status{
@@ -437,7 +453,7 @@
             <div class="v"><span id="tapsLeft">—</span></div>
           </div>
           <div class="stat">
-            <div class="k" data-i18n="reward">НАГРАДА</div>
+            <div class="k" data-i18n="reward">НАГРАДА ЗА ТАП</div>
             <div class="v">+<span id="rewardVal">0.0000</span> <small>USDT</small></div>
           </div>
         </div>
@@ -448,12 +464,12 @@
       <!-- INVITE -->
       <div class="screen" id="screenInvite">
         <div class="balanceWrap" style="padding-top:6px">
-          <div class="balanceLabel" data-i18n="invite_title">ПРИГЛАСИТЬ</div>
+          <div class="balanceLabel" data-i18n="invite_title">ПРИГЛАСИТЬ ДРУЗЕЙ</div>
           <div class="subline" data-i18n="invite_sub">
-            Приглашай друзей и получай +0.1 USDT за каждого.
+            Приглашай друзей и получай +0.1 USDT за каждого ✅
           </div>
           <div class="subline" data-i18n="invite_sub2">
-            Бонус начисляется после 10 000 тапов реферала и заработка 1 USDT.
+            Бонус начисляется после 10 000 тапов и заработка 1 USDT рефералом.
           </div>
         </div>
 
@@ -482,7 +498,7 @@
         </div>
       </div>
 
-      <!-- ACCOUNT / CABINET -->
+      <!-- ACCOUNT -->
       <div class="screen" id="screenCabinet">
         <div class="balanceWrap" style="padding-top:6px">
           <div class="balanceLabel" data-i18n="account_title">АККАУНТ</div>
@@ -493,7 +509,7 @@
           <div class="bigNum"><span id="cabBalance">0.0000</span> <span class="muted">USDT</span></div>
         </div>
 
-        <!-- ПАКЕТЫ теперь здесь -->
+        <!-- ПАКЕТЫ -->
         <div class="subCard">
           <h3 data-i18n="packages_title">ПАКЕТЫ</h3>
           <div class="subline" data-i18n="packages_sub">
@@ -501,7 +517,6 @@
           </div>
           <div class="pkgGrid" id="pkgGrid"></div>
 
-          <!-- панель оплаты (та же, что была раньше) -->
           <div id="payPanel" style="display:none; margin-top:16px;">
             <div class="subCard">
               <h3 data-i18n="payment_title">ОПЛАТА</h3>
@@ -525,12 +540,18 @@
           </div>
         </div>
 
-        <!-- ВЫВОД СРЕДСТВ -->
+        <!-- ВЫВОД -->
         <div class="withdrawBox" id="withdrawSection">
           <h3>ВЫВОД СРЕДСТВ</h3>
-          
+
+          <div class="withdraw-info">
+            Доступно для вывода: <b id="availableWithdraw">0.0000</b> USDT<br>
+            Минимальная сумма: 20 USDT
+          </div>
+
           <div class="field">
-            <input type="number" id="withdrawAmount" placeholder="Сумма (мин. 20 USDT)" step="0.01" min="20" />
+            <input type="number" id="withdrawAmount" placeholder="Сумма вывода" step="0.01" min="0" />
+            <button class="btn max" id="btnMax">Max</button>
           </div>
 
           <div class="field" style="margin-top:10px;">
@@ -553,7 +574,7 @@
           <div id="withdrawStatus" class="withdraw-status" style="display:none;"></div>
         </div>
 
-        <!-- отладочная информация (можно убрать позже) -->
+        <!-- отладка (можно удалить позже) -->
         <div class="subCard" style="margin-top:16px; font-size:12px;">
           userId: <b id="srvUserId">—</b><br>
           taps left: <b id="srvTapsLeft">—</b><br>
@@ -573,10 +594,10 @@
 
   <script>
     // ========================================
-    //   КОНФИГУРАЦИЯ — ВАЖНО!
+    //   КОНФИГ
     // ========================================
-    const BOT_USERNAME = "hfufh4fu4bot";           // ← твой бот
-    const ADMIN_TG_ID   = 123456789;               // ← ТВОЙ Telegram ID !!!!!!!!
+    const BOT_USERNAME = "hfufh4fu4bot";
+    const ADMIN_TG_ID  = 123456789;  // ← замени на свой Telegram ID !!!!!
 
     // ========================================
     //   ПЕРЕВОДЫ
@@ -590,8 +611,8 @@
         tab_home: "TAP",
         tab_account: "Аккаунт",
         invite_title: "ПРИГЛАСИТЬ ДРУЗЕЙ",
-        invite_sub: "Приглашай друзей и получай +0.1 USDT за каждого",
-        invite_sub2: "Бонус начисляется после 10 000 тапов и 1 USDT заработка реферала",
+        invite_sub: "Приглашай друзей и получай +0.1 USDT за каждого ✅",
+        invite_sub2: "Бонус начисляется после 10 000 тапов и 1 USDT заработка рефералом.",
         invited_count: "ПРИГЛАШЕНО",
         invite_bonus: "БОНУС",
         your_link: "ТВОЯ РЕФЕРАЛЬНАЯ ССЫЛКА",
@@ -600,20 +621,26 @@
         account_title: "АККАУНТ",
         account_balance: "БАЛАНС",
         packages_title: "ПАКЕТЫ",
-        packages_sub: "Выбери пакет, чтобы продолжить тапать",
+        packages_sub: "Выбери пакет, чтобы продолжить тапать и увеличить награду",
         buy: "Купить",
         payment_title: "ОПЛАТА",
         copy_address: "Скопировать адрес",
         copy_amount: "Скопировать сумму",
         check_payment: "Проверить оплату",
         close: "Закрыть",
-        payment_note: "Отправляй ТОЧНУЮ сумму (с копейками)",
-        pay_created: "Создан инвойс. Переведи указанную сумму ↓",
+        payment_note: "⚠️ Отправляй ТОЧНУЮ сумму (с копейками)",
+        pay_created: "Инвойс создан. Переведи указанную сумму ниже ↓",
         paid_ok: "Оплата найдена ✓ Пакет активирован",
         not_paid: "Пока не видно. Подожди 1–5 минут",
         server_error: "Ошибка сервера",
         no_refs: "Пока никого нет",
-        hint: () => `🎁 <b>Рефералка работает через бота</b><br>Человек должен открыть ссылку и нажать Start`
+        hint: () => `🎁 <b>Рефералка работает через бота</b><br>Человек должен открыть ссылку и нажать Start`,
+        taps_ended_title: "Тапы закончились",
+        taps_ended_msg: "Купи пакет, чтобы продолжить зарабатывать",
+        btn_account: "Аккаунт",
+        min_withdraw: "Минимальная сумма вывода — 20 USDT",
+        available_withdraw: "Доступно для вывода",
+        max_btn: "Max"
       },
       en: {
         balance_label: "BALANCE",
@@ -623,8 +650,8 @@
         tab_home: "TAP",
         tab_account: "Account",
         invite_title: "INVITE FRIENDS",
-        invite_sub: "Invite friends and get +0.1 USDT each",
-        invite_sub2: "Bonus credited after referral reaches 10,000 taps and 1 USDT earned",
+        invite_sub: "Invite friends and get +0.1 USDT each ✅",
+        invite_sub2: "Bonus credited after 10,000 taps and 1 USDT earned by referral.",
         invited_count: "INVITED",
         invite_bonus: "BONUS",
         your_link: "YOUR REFERRAL LINK",
@@ -633,20 +660,26 @@
         account_title: "ACCOUNT",
         account_balance: "BALANCE",
         packages_title: "PACKAGES",
-        packages_sub: "Choose a package to continue tapping",
+        packages_sub: "Choose a package to continue tapping and increase reward",
         buy: "Buy",
         payment_title: "PAYMENT",
         copy_address: "Copy address",
         copy_amount: "Copy amount",
         check_payment: "Check payment",
         close: "Close",
-        payment_note: "Send EXACT amount (with decimals)",
-        pay_created: "Invoice created. Send the exact amount below",
+        payment_note: "⚠️ Send EXACT amount (with decimals)",
+        pay_created: "Invoice created. Send the exact amount below ↓",
         paid_ok: "Payment detected ✓ Package activated",
         not_paid: "Not seen yet. Wait a few minutes",
         server_error: "Server error",
         no_refs: "No referrals yet",
-        hint: () => `🎁 <b>Referral via bot</b><br>User must open link and press Start`
+        hint: () => `🎁 <b>Referral via bot</b><br>User must open link and press Start`,
+        taps_ended_title: "Taps ended",
+        taps_ended_msg: "Buy a package to continue earning",
+        btn_account: "Account",
+        min_withdraw: "Minimum withdrawal amount is 20 USDT",
+        available_withdraw: "Available for withdrawal",
+        max_btn: "Max"
       }
     };
 
@@ -662,33 +695,30 @@
       fullName: "User",
 
       balance: 0,
-      tapsLeft: 0,
+      tapsLeft: 10000,          // ← сразу 10 000 для нового пользователя
       tapsTotal: 0,
-      tapReward: 0,
-      capRemaining: 0,
+      tapReward: 0.0001,        // ← 0.0001 USDT за тап по умолчанию
+      capRemaining: 1.0,        // 10000 * 0.0001 = 1 USDT макс профит на старте
 
       referrals: [],
       invitedCount: 0,
       bonusTotal: 0,
 
       packages: null,
-      payAddress: "",
       currentInvoice: null,
 
       isTapping: false,
       tapCooldownUntil: 0,
 
-      // для вывода
       withdrawInProgress: false
     };
 
-    function fmt(x, decimals = 4) {
-      if (!Number.isFinite(x)) return "0.0000";
-      return Number(x).toFixed(decimals);
+    function fmt(x, dec = 4) {
+      return Number.isFinite(x) ? Number(x).toFixed(dec) : "0.0000";
     }
 
     function escapeHtml(s) {
-      return String(s||"").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[c]));
+      return String(s||"").replace(/[&<>"']/g, c => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#039;" }[c]));
     }
 
     function detectLang() {
@@ -717,9 +747,8 @@
           headers: {"Content-Type": "application/json"},
           body: JSON.stringify({...body, lang: state.lang})
         });
-        const text = await r.text();
-        if (!r.ok) throw new Error(text);
-        return JSON.parse(text);
+        if (!r.ok) throw new Error(await r.text());
+        return await r.json();
       } catch (err) {
         console.error(path, err);
         return {ok:false, error: err.message};
@@ -741,9 +770,9 @@
       return state.userId ? `https://t.me/${BOT_USERNAME}?start=ref_${state.userId}` : "";
     }
 
-    function showToast(msg, title = "") {
+    function showToast(msg, title = "", buttons = [{type:"ok"}]) {
       if (tg?.showPopup) {
-        tg.showPopup({title: title || " ", message: msg, buttons:[{type:"ok"}]});
+        tg.showPopup({ title: title || " ", message: msg, buttons });
       } else {
         alert((title ? title + "\n" : "") + msg);
       }
@@ -759,14 +788,17 @@
     }
 
     // ========================================
-    //   UI — переключение экранов
+    //   ЭКРАНЫ
     // ========================================
     function showScreen(name) {
       document.querySelectorAll(".screen").forEach(s => s.classList.remove("active"));
       document.querySelectorAll(".tabBtn").forEach(b => b.classList.remove("active"));
 
-      document.getElementById(`screen${name.charAt(0).toUpperCase() + name.slice(1)}`).classList.add("active");
-      document.getElementById(`tab${name.charAt(0).toUpperCase() + name.slice(1)}`).classList.add("active");
+      const screenId = `screen${name.charAt(0).toUpperCase() + name.slice(1)}`;
+      const tabId    = `tab${name.charAt(0).toUpperCase() + name.slice(1)}`;
+
+      document.getElementById(screenId)?.classList.add("active");
+      document.getElementById(tabId)?.classList.add("active");
     }
 
     document.getElementById("tabHome").onclick    = () => showScreen("home");
@@ -774,7 +806,7 @@
     document.getElementById("tabCabinet").onclick = () => showScreen("cabinet");
 
     // ========================================
-    //   Рендер пакетов (теперь в Account)
+    //   ПАКЕТЫ
     // ========================================
     function renderPackages() {
       const grid = document.getElementById("pkgGrid");
@@ -784,15 +816,11 @@
       }
 
       grid.innerHTML = "";
-      const order = ["1","2","3"]; // предполагаем 3 пакета
-
-      order.forEach(key => {
+      ["1","2","3"].forEach(key => {
         const p = state.packages[key];
         if (!p) return;
 
-        let emoji = "🟢";
-        let name = p.name || `Пакет ${key}`;
-
+        let emoji = "🟢", name = p.name || `Пакет ${key}`;
         if (key === "1") { emoji = "👶"; name = "Новичок"; }
         if (key === "2") { emoji = "⭐"; name = "Профи";   }
         if (key === "3") { emoji = "🐳"; name = "Кит";     }
@@ -824,18 +852,14 @@
     }
 
     // ========================================
-    //   Пополнение (старая логика сохранена)
+    //   ПОПОЛНЕНИЕ (без изменений)
     // ========================================
-    const payPanel   = document.getElementById("payPanel");
-    const payInfo    = document.getElementById("payInfoLine");
-    const payAddr    = document.getElementById("payAddress");
-    const payAmnt    = document.getElementById("payAmount");
-
+    const payPanel = document.getElementById("payPanel");
     function openPayment(invoice) {
       state.currentInvoice = invoice;
-      payInfo.textContent = I18N[state.lang].pay_created;
-      payAddr.value  = invoice.address  || "";
-      payAmnt.value  = fmt(invoice.amount_usdt || 0, 6);
+      document.getElementById("payInfoLine").textContent = I18N[state.lang].pay_created;
+      document.getElementById("payAddress").value = invoice.address || "";
+      document.getElementById("payAmount").value = fmt(invoice.amount_usdt || 0, 6);
       payPanel.style.display = "block";
       payPanel.scrollIntoView({behavior:"smooth"});
     }
@@ -846,22 +870,19 @@
     };
 
     document.getElementById("copyAddressBtn").onclick = async () => {
-      const ok = await copyText(payAddr.value);
-      showToast(ok ? "Адрес скопирован" : "Ошибка копирования");
+      const ok = await copyText(document.getElementById("payAddress").value);
+      showToast(ok ? "Адрес скопирован" : "Ошибка");
     };
 
     document.getElementById("copyAmountBtn").onclick = async () => {
-      const ok = await copyText(payAmnt.value);
-      showToast(ok ? "Сумма скопирована" : "Ошибка копирования");
+      const ok = await copyText(document.getElementById("payAmount").value);
+      showToast(ok ? "Сумма скопирована" : "Ошибка");
     };
 
     async function createInvoice(pkgId) {
       const res = await apiPost("/api/payments/create", { tg_id: state.userId, package_id: pkgId });
-      if (res?.ok && res.invoice) {
-        openPayment(res.invoice);
-      } else {
-        showToast(res?.error || "Не удалось создать инвойс");
-      }
+      if (res?.ok && res.invoice) openPayment(res.invoice);
+      else showToast(res?.error || "Ошибка создания инвойса");
     }
 
     document.getElementById("checkPayBtn").onclick = async () => {
@@ -884,17 +905,36 @@
     };
 
     // ========================================
-    //   ВЫВОД СРЕДСТВ
+    //   ВЫВОД СРЕДСТВ — обновлённая логика
     // ========================================
+    const withdrawAmountInput = document.getElementById("withdrawAmount");
+    const availableSpan = document.getElementById("availableWithdraw");
+    const btnMax = document.getElementById("btnMax");
+
+    function updateWithdrawUI() {
+      const avail = Math.max(0, state.balance);
+      availableSpan.textContent = fmt(avail, avail < 1 ? 4 : 2);
+      btnMax.textContent = I18N[state.lang].max_btn;
+    }
+
+    btnMax.onclick = () => {
+      const maxVal = Math.max(0, state.balance);
+      withdrawAmountInput.value = fmt(maxVal, 4);
+    };
+
     document.getElementById("btnWithdraw").onclick = async () => {
       if (state.withdrawInProgress) return;
 
-      const amt  = Number(document.getElementById("withdrawAmount").value);
+      let amt = Number(withdrawAmountInput.value) || 0;
       const net  = document.getElementById("withdrawNetwork").value;
       const addr = document.getElementById("withdrawAddress").value.trim();
 
       if (amt < 20) {
-        showToast("Минимальная сумма вывода — 20 USDT");
+        showToast(I18N[state.lang].min_withdraw);
+        return;
+      }
+      if (amt > state.balance) {
+        showToast("Недостаточно средств на балансе");
         return;
       }
       if (!net) {
@@ -908,7 +948,7 @@
 
       state.withdrawInProgress = true;
       const btn = document.getElementById("btnWithdraw");
-      btn.textContent = "Отправка...";
+      btn.textContent = state.lang === "ru" ? "Отправка..." : "Sending...";
       btn.disabled = true;
 
       try {
@@ -925,6 +965,8 @@
             `✅ Заявка создана<br>Сумма: ${fmt(amt,2)} USDT<br>Сеть: ${net}<br>Обработка: до 24 часов`;
           document.getElementById("withdrawStatus").style.display = "block";
 
+          withdrawAmountInput.value = "";
+          syncWithServer(); // обновим баланс
           showToast("Заявка отправлена\nОжидайте до 24 часов");
         } else {
           showToast(res.error || "Ошибка создания заявки");
@@ -939,7 +981,7 @@
     };
 
     // ========================================
-    //   TAP логика + проверка на 0 тапов
+    //   ТАПЫ — с popup при 0 тапах
     // ========================================
     const coin = document.getElementById("coin");
 
@@ -950,13 +992,13 @@
       el.style.top  = y + "px";
       el.textContent = text;
       coin.appendChild(el);
-      setTimeout(()=>el.remove(), 900);
+      setTimeout(() => el.remove(), 900);
     }
 
-    function tapXY(e) {
-      const r = coin.getBoundingClientRect();
+    function getTapXY(e) {
+      const rect = coin.getBoundingClientRect();
       const t = e.touches ? e.touches[0] : e;
-      return { x: t.clientX - r.left, y: t.clientY - r.top };
+      return { x: t.clientX - rect.left, y: t.clientY - rect.top };
     }
 
     async function handleTap(e) {
@@ -964,11 +1006,18 @@
       if (Date.now() < state.tapCooldownUntil) return;
       state.tapCooldownUntil = Date.now() + 120;
 
-      const {x,y} = tapXY(e);
+      const {x, y} = getTapXY(e);
 
       if (state.tapsLeft <= 0 || state.tapReward <= 0) {
         spawnPlus(x, y, "+0.0000");
-        showToast("Тапы закончились", "Купи пакет → Аккаунт");
+        showToast(
+          I18N[state.lang].taps_ended_msg,
+          I18N[state.lang].taps_ended_title,
+          [{ text: I18N[state.lang].btn_account, type: "default" }]
+        ).then(() => {
+          // после нажатия любой кнопки в popup → переключаем на аккаунт
+          showScreen("cabinet");
+        });
         return;
       }
 
@@ -981,13 +1030,14 @@
         const res = await apiPost("/api/tap", { tg_id: state.userId });
         if (res.ok) {
           Object.assign(state, {
-            balance:     Number(res.balance_usdt || state.balance),
-            tapsLeft:    Number(res.taps_available || 0),
-            tapsTotal:   Number(res.taps_total || state.tapsTotal),
-            tapReward:   Number(res.tap_reward || state.tapReward),
-            capRemaining:Number(res.earn_cap_remaining || 0)
+            balance:      Number(res.balance_usdt || state.balance),
+            tapsLeft:     Number(res.taps_available ?? state.tapsLeft),
+            tapsTotal:    Number(res.taps_total ?? state.tapsTotal),
+            tapReward:    Number(res.tap_reward ?? state.tapReward),
+            capRemaining: Number(res.earn_cap_remaining ?? state.capRemaining)
           });
           renderHome();
+          updateWithdrawUI();
         }
       } finally {
         state.isTapping = false;
@@ -995,20 +1045,20 @@
     }
 
     coin.addEventListener("pointerdown", handleTap);
-    coin.addEventListener("touchstart", handleTap, {passive:false});
+    coin.addEventListener("touchstart", handleTap, { passive: false });
 
     // ========================================
-    //   Рендер домашнего экрана
+    //   РЕНДЕР HOME
     // ========================================
     function renderHome() {
       document.getElementById("balanceVal").textContent = fmt(state.balance, state.balance < 1 ? 4 : 2);
-      document.getElementById("tapsLeft").textContent   = state.tapsLeft || "—";
+      document.getElementById("tapsLeft").textContent   = state.tapsLeft >= 0 ? state.tapsLeft : "—";
       document.getElementById("rewardVal").textContent  = fmt(state.tapReward || 0, 4);
 
       const r = Number(state.tapReward || 0);
       document.getElementById("planLine").textContent = r > 0
         ? `+${fmt(r,4)} USDT / тап`
-        : (state.lang === "ru" ? "Купи пакет в разделе Аккаунт" : "Buy package in Account");
+        : (state.lang === "ru" ? "Купи пакет в Аккаунте" : "Buy package in Account");
 
       document.getElementById("hintBox").innerHTML = I18N[state.lang].hint();
     }
@@ -1019,14 +1069,11 @@
       document.getElementById("inviteBonusTotal").textContent = fmt(state.bonusTotal || 0, 4);
 
       const list = document.getElementById("refList");
-      list.innerHTML = "";
+      list.innerHTML = state.referrals?.length
+        ? ""
+        : `<div class="item muted">${I18N[state.lang].no_refs}</div>`;
 
-      if (!state.referrals?.length) {
-        list.innerHTML = `<div class="item muted">${I18N[state.lang].no_refs}</div>`;
-        return;
-      }
-
-      state.referrals.forEach(r => {
+      (state.referrals || []).forEach(r => {
         const div = document.createElement("div");
         div.className = "item";
         div.innerHTML = `<span>${escapeHtml(r.name||"")}</span><span>+${fmt(r.reward_usdt||0,2)} USDT</span>`;
@@ -1036,53 +1083,52 @@
 
     function setLanguage(lng) {
       state.lang = lng;
-      document.getElementById("btnRU").classList.toggle("active", lng==="ru");
-      document.getElementById("btnEN").classList.toggle("active", lng==="en");
+      document.getElementById("btnRU").classList.toggle("active", lng === "ru");
+      document.getElementById("btnEN").classList.toggle("active", lng === "en");
 
       document.querySelectorAll("[data-i18n]").forEach(el => {
-        const k = el.dataset.i18n;
-        if (I18N[lng][k]) el.textContent = I18N[lng][k];
+        const key = el.dataset.i18n;
+        if (I18N[lng][key]) el.textContent = I18N[lng][key];
       });
 
       renderHome();
       renderInvite();
       renderPackages();
+      updateWithdrawUI();
     }
 
     document.getElementById("btnRU").onclick = () => setLanguage("ru");
     document.getElementById("btnEN").onclick = () => setLanguage("en");
 
     // ========================================
-    //   Синхронизация с сервером
+    //   СИНХРОНИЗАЦИЯ
     // ========================================
     async function syncWithServer() {
-      // пакеты
       const pkgs = await apiGet("/api/packages");
       if (pkgs?.ok) {
         state.packages = pkgs.packages || {};
         renderPackages();
       }
 
-      // данные пользователя
       const me = await apiGet(`/api/user/${state.userId}`);
       if (me?.ok) {
         Object.assign(state, {
-          balance:     Number(me.balance?.balance_usdt || 0),
-          tapsLeft:    Number(me.taps?.taps_available || 0),
-          tapsTotal:   Number(me.taps?.taps_total || 0),
-          tapReward:   Number(me.taps?.tap_reward || 0),
-          capRemaining:Number(me.taps?.earn_cap_remaining || 0)
+          balance:      Number(me.balance?.balance_usdt || state.balance),
+          tapsLeft:     Number(me.taps?.taps_available ?? state.tapsLeft),
+          tapsTotal:    Number(me.taps?.taps_total ?? state.tapsTotal),
+          tapReward:    Number(me.taps?.tap_reward ?? state.tapReward),
+          capRemaining: Number(me.taps?.earn_cap_remaining ?? state.capRemaining)
         });
 
         document.getElementById("cabBalance").textContent = fmt(state.balance, 4);
         document.getElementById("srvUserId").textContent  = state.userId;
         document.getElementById("srvTapsLeft").textContent= state.tapsLeft;
-        document.getElementById("srvReward").textContent  = fmt(state.tapReward,4);
+        document.getElementById("srvReward").textContent  = fmt(state.tapReward, 4);
 
         renderHome();
+        updateWithdrawUI();
       }
 
-      // рефералы
       const refs = await apiGet(`/api/referrals/${state.userId}`);
       if (refs?.ok) {
         state.referrals    = refs.referrals || [];
@@ -1092,23 +1138,20 @@
       }
     }
 
-    // Копировать реф-ссылку
     document.getElementById("copyRef").onclick = async () => {
-      const link = getRefLink();
-      const ok = await copyText(link);
+      const ok = await copyText(getRefLink());
       showToast(ok ? "Ссылка скопирована!" : "Ошибка");
     };
 
     // ========================================
-    //   СТАРТ
+    //   ЗАПУСК
     // ========================================
     (function init() {
       initUser();
       setLanguage(state.lang);
       showScreen("home");
       syncWithServer();
-      // можно добавить периодическую синхронизацию каждые 30–60 сек
-      // setInterval(syncWithServer, 45000);
+      updateWithdrawUI();
     })();
   </script>
 </body>
