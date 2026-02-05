@@ -25,9 +25,9 @@ app.add_middleware(
 
 # ---------------- PATHS ----------------
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-WEBAPP_DIR = os.path.join(BASE_DIR, "webapp")
+WEBAPP_DIR = os.path.join(os.getcwd(), "webapp")
 INDEX_PATH = os.path.join(WEBAPP_DIR, "index.html")
-if os.path.exists(WEBAPP_DIR):
+if os.path.exists(INDEX_PATH):
     app.mount("/static", StaticFiles(directory=WEBAPP_DIR), name="static")
 
 # ---------------- ENV ----------------
