@@ -695,16 +695,21 @@
       fullName: "User",
 
       balance: 0,
-      tapsLeft: 10000,          // ← сразу 10 000 для нового пользователя
+      tapsLeft: 10000,
       tapsTotal: 0,
-      tapReward: 0.0001,        // ← 0.0001 USDT за тап по умолчанию
-      capRemaining: 1.0,        // 10000 * 0.0001 = 1 USDT макс профит на старте
+      tapReward: 0.0001,
+      capRemaining: 1.0,
 
       referrals: [],
       invitedCount: 0,
       bonusTotal: 0,
 
-      packages: null,
+      packages: {
+        "1": { name: "Новичок", price: 10, taps: 100000, reward: 0.0002, cap: 20 },
+        "2": { name: "Профи", price: 50, taps: 100000, reward: 0.001, cap: 100 },
+        "3": { name: "Кит", price: 100, taps: 100000, reward: 0.002, cap: 200 }
+      },  // hardcode пакетов (цены примерные, измени)
+
       currentInvoice: null,
 
       isTapping: false,
@@ -810,17 +815,13 @@
     // ========================================
     function renderPackages() {
       const grid = document.getElementById("pkgGrid");
-      if (!state.packages) {
-        grid.innerHTML = '<div style="color:var(--muted);padding:12px;">Загрузка...</div>';
-        return;
-      }
-
       grid.innerHTML = "";
-      ["1","2","3"].forEach(key => {
-        const p = state.packages[key];
-        if (!p) return;
 
-        let emoji = "🟢", name = p.name || `Пакет ${key}`;
+      Object.keys(state.packages).sort().forEach(key => {
+        const p = state.packages[key];
+
+        let emoji = "🟢", name = p.name;
+
         if (key === "1") { emoji = "👶"; name = "Новичок"; }
         if (key === "2") { emoji = "⭐"; name = "Профи";   }
         if (key === "3") { emoji = "🐳"; name = "Кит";     }
@@ -832,12 +833,12 @@
             <div>
               <div class="pkgName">${emoji} ${name}</div>
               <div class="pkgMeta">
-                тапов: <b>${Number(p.taps||0).toLocaleString()}</b><br>
-                награда: <b>${fmt(p.reward||0,4)}</b> USDT / тап<br>
-                макс. профит: <b>${fmt(p.cap||0,2)}</b> USDT
+                тапов: <b>${Number(p.taps).toLocaleString()}</b><br>
+                награда: <b>${fmt(p.reward,4)}</b> USDT / тап<br>
+                макс. профит: <b>${fmt(p.cap,2)}</b> USDT
               </div>
             </div>
-            <div class="pkgPrice">${fmt(p.price||0,2)} USDT</div>
+            <div class="pkgPrice">${fmt(p.price,2)} USDT</div>
           </div>
           <button class="btn ok" data-pkg-id="${key}" style="margin-top:12px;width:100%;">
             ${I18N[state.lang].buy}
@@ -852,7 +853,7 @@
     }
 
     // ========================================
-    //   ПОПОЛНЕНИЕ (без изменений)
+    //   ПОПОЛНЕНИЕ
     // ========================================
     const payPanel = document.getElementById("payPanel");
     function openPayment(invoice) {
@@ -905,7 +906,7 @@
     };
 
     // ========================================
-    //   ВЫВОД СРЕДСТВ — обновлённая логика
+    //   ВЫВОД
     // ========================================
     const withdrawAmountInput = document.getElementById("withdrawAmount");
     const availableSpan = document.getElementById("availableWithdraw");
@@ -981,7 +982,7 @@
     };
 
     // ========================================
-    //   ТАПЫ — с popup при 0 тапах
+    //   ТАПЫ — с локальным обновлением баланса
     // ========================================
     const coin = document.getElementById("coin");
 
@@ -1014,14 +1015,17 @@
           I18N[state.lang].taps_ended_msg,
           I18N[state.lang].taps_ended_title,
           [{ text: I18N[state.lang].btn_account, type: "default" }]
-        ).then(() => {
-          // после нажатия любой кнопки в popup → переключаем на аккаунт
-          showScreen("cabinet");
-        });
+        ).then(() => showScreen("cabinet"));
         return;
       }
 
+      // локальное обновление сразу
+      state.balance += state.tapReward;
+      state.tapsLeft -= 1;
+      state.capRemaining -= state.tapReward;
       spawnPlus(x, y, "+" + fmt(state.tapReward, 4));
+      renderHome();
+      updateWithdrawUI();
 
       if (state.isTapping) return;
       state.isTapping = true;
@@ -1029,13 +1033,12 @@
       try {
         const res = await apiPost("/api/tap", { tg_id: state.userId });
         if (res.ok) {
-          Object.assign(state, {
-            balance:      Number(res.balance_usdt || state.balance),
-            tapsLeft:     Number(res.taps_available ?? state.tapsLeft),
-            tapsTotal:    Number(res.taps_total ?? state.tapsTotal),
-            tapReward:    Number(res.tap_reward ?? state.tapReward),
-            capRemaining: Number(res.earn_cap_remaining ?? state.capRemaining)
-          });
+          // перезаписываем с сервера
+          state.balance = Number(res.balance_usdt || state.balance);
+          state.tapsLeft = Number(res.taps_available || state.tapsLeft);
+          state.tapsTotal = Number(res.taps_total || state.tapsTotal);
+          state.tapReward = Number(res.tap_reward || state.tapReward);
+          state.capRemaining = Number(res.earn_cap_remaining || state.capRemaining);
           renderHome();
           updateWithdrawUI();
         }
@@ -1052,8 +1055,8 @@
     // ========================================
     function renderHome() {
       document.getElementById("balanceVal").textContent = fmt(state.balance, state.balance < 1 ? 4 : 2);
-      document.getElementById("tapsLeft").textContent   = state.tapsLeft >= 0 ? state.tapsLeft : "—";
-      document.getElementById("rewardVal").textContent  = fmt(state.tapReward || 0, 4);
+      document.getElementById("tapsLeft").textContent = state.tapsLeft >= 0 ? state.tapsLeft : "—";
+      document.getElementById("rewardVal").textContent = fmt(state.tapReward || 0, 4);
 
       const r = Number(state.tapReward || 0);
       document.getElementById("planLine").textContent = r > 0
@@ -1105,37 +1108,34 @@
     // ========================================
     async function syncWithServer() {
       const pkgs = await apiGet("/api/packages");
-      if (pkgs?.ok) {
-        state.packages = pkgs.packages || {};
-        renderPackages();
-      }
+      if (pkgs?.ok && pkgs.packages) {
+        state.packages = pkgs.packages;
+      } // иначе использует hardcode
 
       const me = await apiGet(`/api/user/${state.userId}`);
       if (me?.ok) {
-        Object.assign(state, {
-          balance:      Number(me.balance?.balance_usdt || state.balance),
-          tapsLeft:     Number(me.taps?.taps_available ?? state.tapsLeft),
-          tapsTotal:    Number(me.taps?.taps_total ?? state.tapsTotal),
-          tapReward:    Number(me.taps?.tap_reward ?? state.tapReward),
-          capRemaining: Number(me.taps?.earn_cap_remaining ?? state.capRemaining)
-        });
-
+        state.balance = Number(me.balance?.balance_usdt || state.balance);
+        state.tapsLeft = Number(me.taps?.taps_available || state.tapsLeft);
+        state.tapsTotal = Number(me.taps?.taps_total || state.tapsTotal);
+        state.tapReward = Number(me.taps?.tap_reward || state.tapReward);
+        state.capRemaining = Number(me.taps?.earn_cap_remaining || state.capRemaining);
         document.getElementById("cabBalance").textContent = fmt(state.balance, 4);
         document.getElementById("srvUserId").textContent  = state.userId;
         document.getElementById("srvTapsLeft").textContent= state.tapsLeft;
         document.getElementById("srvReward").textContent  = fmt(state.tapReward, 4);
-
         renderHome();
         updateWithdrawUI();
       }
 
       const refs = await apiGet(`/api/referrals/${state.userId}`);
       if (refs?.ok) {
-        state.referrals    = refs.referrals || [];
+        state.referrals = refs.referrals || [];
         state.invitedCount = Number(refs.invited_count || 0);
-        state.bonusTotal   = Number(refs.bonus_total || 0);
+        state.bonusTotal = Number(refs.bonus_total || 0);
         renderInvite();
       }
+
+      renderPackages();
     }
 
     document.getElementById("copyRef").onclick = async () => {
