@@ -11,7 +11,7 @@ load_dotenv()
 
 app = FastAPI(title="TG Clicker API")
 
-BUILD = os.getenv("BUILD", "local")
+BUILD = os.getenv("BUILD") or os.getenv("RENDER_GIT_COMMIT") or "local"
 
 # ---------------- CORS ----------------
 app.add_middleware(
