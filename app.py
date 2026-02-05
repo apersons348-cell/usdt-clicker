@@ -186,37 +186,23 @@ def find_payment_for_invoice(base_price: float, created_at: int, conn: sqlite3.C
 # ================== CORE HELPERS ==================
 def ensure_user_and_bonus(conn: sqlite3.Connection, tg_id: int):
     cur = conn.cursor()
-
-    # Создаём записи, если их нет
+    # ensure rows exist
     cur.execute("INSERT OR IGNORE INTO users (tg_id, bonus_given) VALUES (?, 0)", (tg_id,))
-    cur.execute("""
-        INSERT OR IGNORE INTO taps 
-        (tg_id, taps_available, tap_reward, earn_cap_remaining, taps_total, balance_usdt)
-        VALUES (?, 0, ?, ?, 0, 0.0)
-    """, (tg_id, WELCOME_REWARD, WELCOME_CAP))
-
-    # Атомарная выдача бонуса (только один раз)
-    conn.isolation_level = None
-    cur.execute("BEGIN IMMEDIATE")
-
-    cur.execute("SELECT bonus_given FROM users WHERE tg_id = ? FOR UPDATE", (tg_id,))
-    row = cur.fetchone()
-    bonus_given = row["bonus_given"] if row else 0
-
+    cur.execute("INSERT OR IGNORE INTO taps (tg_id, taps_available, tap_reward, earn_cap_remaining) VALUES (?, 0, 0, 0)", (tg_id,))
+    # bonus one-time
+    cur.execute("SELECT bonus_given FROM users WHERE tg_id=? LIMIT 1", (tg_id,))
+    u = cur.fetchone()
+    bonus_given = int(u["bonus_given"]) if u and u["bonus_given"] is not None else 0
     if bonus_given == 0:
         cur.execute("""
             UPDATE taps SET
-                taps_available = ?,
-                tap_reward = ?,
-                earn_cap_remaining = ?
-            WHERE tg_id = ?
+              taps_available = taps_available + ?,
+              tap_reward = CASE WHEN tap_reward > 0 THEN tap_reward ELSE ? END,
+              earn_cap_remaining = earn_cap_remaining + ?
+            WHERE tg_id=?
         """, (WELCOME_TAPS, WELCOME_REWARD, WELCOME_CAP, tg_id))
-        cur.execute("UPDATE users SET bonus_given = 1 WHERE tg_id = ?", (tg_id,))
-        conn.commit()
-    else:
-        conn.commit()
-
-    conn.isolation_level = ''
+        cur.execute("UPDATE users SET bonus_given=1 WHERE tg_id=?", (tg_id,))
+    conn.commit()
 
 # ================== ROUTES ==================
 @app.get("/")
@@ -345,14 +331,13 @@ def get_referrals(tg_id: int):
     with closing(db()) as conn:
         cur = conn.cursor()
         cur.execute("""
-            SELECT r.referred_id, u.tg_id as referrer_id, r.bonus_paid
+            SELECT r.referred_id, r.bonus_paid
             FROM referrals r
-            JOIN users u ON u.tg_id = r.referrer_id
             WHERE r.referrer_id = ?
         """, (tg_id,))
         referrals = cur.fetchall()
         invited_count = len(referrals)
-        bonus_total = sum(REFERRAL_BONUS for r in referrals if r["bonus_paid"] == 0)  # пока заглушка
+        bonus_total = sum(REFERRAL_BONUS for r in referrals if r["bonus_paid"] == 0)
         return {
             "ok": True,
             "referrals": [dict(r) for r in referrals],
@@ -436,22 +421,3 @@ def check_payment(data: CheckInvoiceIn):
 
         conn.commit()
         return {"ok": True, "paid": True, "txid": txid, "amount": val, "package": pkg}
-
-@app.get("/api/referrals/{tg_id}")
-def get_referrals(tg_id: int):
-    with closing(db()) as conn:
-        cur = conn.cursor()
-        cur.execute("""
-            SELECT r.referred_id, r.bonus_paid
-            FROM referrals r
-            WHERE r.referrer_id = ?
-        """, (tg_id,))
-        referrals = cur.fetchall()
-        invited_count = len(referrals)
-        bonus_total = sum(REFERRAL_BONUS for r in referrals if r["bonus_paid"] == 0)
-        return {
-            "ok": True,
-            "referrals": [dict(r) for r in referrals],
-            "invited_count": invited_count,
-            "bonus_total": bonus_total
-        }
