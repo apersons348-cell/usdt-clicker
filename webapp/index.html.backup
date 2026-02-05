@@ -751,7 +751,7 @@
           method: "POST",
           headers: {"Content-Type": "application/json"},
           body: JSON.stringify({...body, lang: state.lang})
-        // });
+        });
         if (!r.ok) throw new Error(await r.text());
         return await r.json();
       } catch (err) {
@@ -777,7 +777,7 @@
 
     function showToast(msg, title = "", buttons = [{type:"ok"}]) {
       if (tg?.showPopup) {
-        tg.showPopup({ title: title || " ", message: msg, buttons // });
+        tg.showPopup({ title: title || " ", message: msg, buttons });
       } else {
         alert((title ? title + "\n" : "") + msg);
       }
@@ -845,11 +845,11 @@
           </button>
         `;
         grid.appendChild(div);
-      // });
+      });
 
       grid.querySelectorAll("[data-pkg-id]").forEach(btn => {
         btn.onclick = () => createInvoice(btn.dataset.pkgId);
-      // });
+      });
     }
 
     // ========================================
@@ -862,7 +862,7 @@
       document.getElementById("payAddress").value = invoice.address || "";
       document.getElementById("payAmount").value = fmt(invoice.amount_usdt || 0, 6);
       payPanel.style.display = "block";
-      payPanel.scrollIntoView({behavior:"smooth"// });
+      payPanel.scrollIntoView({behavior:"smooth"});
     }
 
     document.getElementById("closePayBtn").onclick = () => {
@@ -881,16 +881,17 @@
     };
 
     async function createInvoice(pkgId) {
-      const res = await apiPost("/api/payments/create", { telegram_id: state.userId, package_id: pkgId // });
+      const res = await apiPost("/api/payments/create", { tg_id: state.userId, package_id: pkgId });
       if (res?.ok && res.invoice) openPayment(res.invoice);
       else showToast(res?.error || "Ошибка создания инвойса");
     }
 
     document.getElementById("checkPayBtn").onclick = async () => {
       if (!state.currentInvoice?.id) return;
-      const res = await apiPost("/api/payments/check", { telegram_id: state.userId,
+      const res = await apiPost("/api/payments/check", {
+        tg_id: state.userId,
         invoice_id: state.currentInvoice.id
-      // });
+      });
       if (res?.ok) {
         if (res.paid) {
           showToast(I18N[state.lang].paid_ok);
@@ -952,12 +953,13 @@
       btn.disabled = true;
 
       try {
-        // const res = await apiPost("/api/withdraw/create", { telegram_id: state.userId,
+        const res = await apiPost("/api/withdraw/create", {
+          tg_id: state.userId,
           amount: amt,
           network: net,
           address: addr,
           full_name: state.fullName
-        // });
+        });
 
         if (res.ok) {
           document.getElementById("withdrawStatus").innerHTML =
@@ -1029,7 +1031,7 @@
       state.isTapping = true;
 
       try {
-        const res = await apiPost("/api/tap", { telegram_id: state.userId // });
+        const res = await apiPost("/api/tap", { tg_id: state.userId });
         if (res.ok) {
           // перезаписываем с сервера
           state.balance = Number(res.balance_usdt || state.balance);
@@ -1046,7 +1048,7 @@
     }
 
     coin.addEventListener("pointerdown", handleTap);
-    coin.addEventListener("touchstart", handleTap, { passive: false // });
+    coin.addEventListener("touchstart", handleTap, { passive: false });
 
     // ========================================
     //   РЕНДЕР HOME
@@ -1079,7 +1081,7 @@
         div.className = "item";
         div.innerHTML = `<span>${escapeHtml(r.name||"")}</span><span>+${fmt(r.reward_usdt||0,2)} USDT</span>`;
         list.appendChild(div);
-      // });
+      });
     }
 
     function setLanguage(lng) {
@@ -1090,7 +1092,7 @@
       document.querySelectorAll("[data-i18n]").forEach(el => {
         const key = el.dataset.i18n;
         if (I18N[lng][key]) el.textContent = I18N[lng][key];
-      // });
+      });
 
       renderHome();
       renderInvite();
@@ -1112,10 +1114,10 @@
 
       const me = await apiGet(`/api/user/${state.userId}`);
       if (me?.ok) {
-        state.balance = Number(me.stats?.balance || state.balance);
-        state.tapsLeft = Number(me.stats?.free_taps || state.tapsLeft);
+        state.balance = Number(me.balance?.balance_usdt || state.balance);
+        state.tapsLeft = Number(me.taps?.taps_available || state.tapsLeft);
         state.tapsTotal = Number(me.taps?.taps_total || state.tapsTotal);
-        state.tapReward = Number(me.stats?.tap_reward || state.tapReward);
+        state.tapReward = Number(me.taps?.tap_reward || state.tapReward);
         state.capRemaining = Number(me.taps?.earn_cap_remaining || state.capRemaining);
         document.getElementById("cabBalance").textContent = fmt(state.balance, 4);
         document.getElementById("srvUserId").textContent  = state.userId;
@@ -1125,8 +1127,8 @@
         updateWithdrawUI();
       }
 
-      // const refs = await apiGet(`/api/referrals/${state.userId}`);
-      if (false && refs?.ok) {
+      const refs = await apiGet(`/api/referrals/${state.userId}`);
+      if (refs?.ok) {
         state.referrals = refs.referrals || [];
         state.invitedCount = Number(refs.invited_count || 0);
         state.bonusTotal = Number(refs.bonus_total || 0);
