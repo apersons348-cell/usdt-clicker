@@ -3,12 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
-import os
-import sqlite3
-import time
-import random
-import requests
-import traceback
+import os, sqlite3, time, random, requests, traceback
 from contextlib import closing
 from dotenv import load_dotenv
 
@@ -37,10 +32,7 @@ DB_PATH = os.getenv("DB_PATH", os.path.join(BASE_DIR, "data.db"))
 
 TRONGRID_API_KEY = os.getenv("TRONGRID_API_KEY", "").strip()
 TRON_RECEIVE_ADDRESS = os.getenv("TRON_RECEIVE_ADDRESS", "").strip()
-TRC20_USDT_CONTRACT = os.getenv(
-    "TRC20_USDT_CONTRACT",
-    "TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t"
-).strip()
+TRC20_USDT_CONTRACT = os.getenv("TRC20_USDT_CONTRACT", "TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t").strip()
 TRONGRID_BASE = "https://api.trongrid.io"
 
 PAYMENT_TIME_SLOP_SEC = int(os.getenv("PAYMENT_TIME_SLOP_SEC", "120"))
@@ -61,9 +53,9 @@ PACKAGES = {
 
 # ================== DB ==================
 def db() -> sqlite3.Connection:
-    conn = sqlite3.connect(DB_PATH, check_same_thread=False)
+    conn = sqlite3.connect(DB_PATH, check_same_thread=False, timeout=30)
     conn.row_factory = sqlite3.Row
-    # чуть стабильнее при параллельных запросах
+    # стабильнее при параллельных запросах
     conn.execute("PRAGMA journal_mode=WAL;")
     conn.execute("PRAGMA synchronous=NORMAL;")
     conn.execute("PRAGMA foreign_keys=ON;")
@@ -163,11 +155,7 @@ def get_recent_trc20_transfers(limit: int = 50):
     r = requests.get(
         url,
         headers=tron_headers(),
-        params={
-            "only_confirmed": "true",
-            "limit": limit,
-            "contract_address": TRC20_USDT_CONTRACT
-        },
+        params={"only_confirmed": "true", "limit": limit, "contract_address": TRC20_USDT_CONTRACT},
         timeout=20
     )
     r.raise_for_status()
@@ -201,16 +189,16 @@ def find_payment_for_invoice(base_price: float, created_at: int, conn: sqlite3.C
 
     return False, None, None, None
 
-# ================== CORE HELPERS ==================
-def ensure_user_and_bonus(conn: sqlite3.Connection, tg_id: int):
+# ================== HELPERS ==================
+def ensure_user_rows(conn: sqlite3.Connection, tg_id: int, bonus_given_default: int = 0):
     """
-    Гарантирует наличие строк в users/taps.
-    Выдаёт welcome бонус атомарно (ровно 1 раз) и НЕ перетирает купленные значения.
+    Только гарантирует строки users/taps. НИЧЕГО не начисляет.
+    bonus_given_default:
+      0 -> как обычно
+      1 -> для payments (чтобы welcome не вмешивался)
     """
     cur = conn.cursor()
-
-    # создаём строки (без бонусов)
-    cur.execute("INSERT OR IGNORE INTO users (tg_id, bonus_given) VALUES (?, 0)", (tg_id,))
+    cur.execute("INSERT OR IGNORE INTO users (tg_id, bonus_given) VALUES (?, ?)", (tg_id, bonus_given_default))
     cur.execute("""
         INSERT OR IGNORE INTO taps
         (tg_id, taps_available, tap_reward, earn_cap_remaining, taps_total, balance_usdt)
@@ -218,21 +206,47 @@ def ensure_user_and_bonus(conn: sqlite3.Connection, tg_id: int):
     """, (tg_id,))
     conn.commit()
 
-    # атомарно: кто первый перевёл bonus_given 0->1, тот начисляет
-    cur.execute("BEGIN IMMEDIATE")
-    cur.execute("UPDATE users SET bonus_given=1 WHERE tg_id=? AND bonus_given=0", (tg_id,))
-    first_time = (cur.rowcount == 1)
+def ensure_user_and_welcome(conn: sqlite3.Connection, tg_id: int):
+    """
+    Гарантирует строки и выдаёт welcome ровно 1 раз.
+    Главное: НЕ перетирает прогресс и НЕ лезет в транзакции.
+    """
+    ensure_user_rows(conn, tg_id, bonus_given_default=0)
+    cur = conn.cursor()
 
-    if first_time:
-        # добавляем бонус, не затираем
-        cur.execute("""
-            UPDATE taps SET
-              taps_available = taps_available + ?,
-              tap_reward = CASE WHEN tap_reward > 0 THEN tap_reward ELSE ? END,
-              earn_cap_remaining = earn_cap_remaining + ?
-            WHERE tg_id=?
-        """, (WELCOME_TAPS, WELCOME_REWARD, WELCOME_CAP, tg_id))
+    # уже выдавали welcome? выходим
+    cur.execute("SELECT bonus_given FROM users WHERE tg_id=? LIMIT 1", (tg_id,))
+    row = cur.fetchone()
+    if row and int(row["bonus_given"]) == 1:
+        return
 
+    # если уже есть прогресс (или покупка) — не трогаем, просто помечаем bonus_given=1
+    cur.execute("""
+        SELECT taps_available, taps_total, balance_usdt, tap_reward, earn_cap_remaining
+        FROM taps WHERE tg_id=? LIMIT 1
+    """, (tg_id,))
+    t = cur.fetchone()
+    if t:
+        taps_available = int(t["taps_available"] or 0)
+        taps_total = int(t["taps_total"] or 0)
+        balance = float(t["balance_usdt"] or 0.0)
+        tap_reward = float(t["tap_reward"] or 0.0)
+        cap = float(t["earn_cap_remaining"] or 0.0)
+
+        if taps_available > 0 or taps_total > 0 or balance > 0 or tap_reward > 0 or cap > 0:
+            cur.execute("UPDATE users SET bonus_given=1 WHERE tg_id=?", (tg_id,))
+            conn.commit()
+            return
+
+    # выдаём welcome (1 раз) — добавлением
+    cur.execute("""
+        UPDATE taps SET
+          taps_available = taps_available + ?,
+          tap_reward = CASE WHEN tap_reward > 0 THEN tap_reward ELSE ? END,
+          earn_cap_remaining = earn_cap_remaining + ?
+        WHERE tg_id=?
+    """, (WELCOME_TAPS, WELCOME_REWARD, WELCOME_CAP, tg_id))
+    cur.execute("UPDATE users SET bonus_given=1 WHERE tg_id=?", (tg_id,))
     conn.commit()
 
 # ================== ROUTES ==================
@@ -266,7 +280,7 @@ def packages():
 def get_user(tg_id: int):
     try:
         with closing(db()) as conn:
-            ensure_user_and_bonus(conn, int(tg_id))
+            ensure_user_and_welcome(conn, int(tg_id))
             cur = conn.cursor()
             cur.execute("""
                 SELECT
@@ -285,16 +299,8 @@ def get_user(tg_id: int):
             row = cur.fetchone()
 
             if not row:
-                return {
-                    "status": "ok",
-                    "userId": int(tg_id),
-                    "taps_available": 0,
-                    "tap_reward": 0.0,
-                    "earn_cap_remaining": 0.0,
-                    "taps_total": 0,
-                    "balance_usdt": 0.0,
-                    "bonus_given": 0
-                }
+                return {"status": "ok", "userId": int(tg_id), "taps_available": 0, "tap_reward": 0.0,
+                        "earn_cap_remaining": 0.0, "taps_total": 0, "balance_usdt": 0.0, "bonus_given": 0}
 
             return {
                 "status": "ok",
@@ -307,10 +313,7 @@ def get_user(tg_id: int):
                 "bonus_given": int(row["bonus_given"]),
             }
     except Exception as e:
-        return JSONResponse(
-            status_code=500,
-            content={"ok": False, "error": str(e), "trace": traceback.format_exc()[:4000]}
-        )
+        return JSONResponse(status_code=500, content={"ok": False, "error": str(e), "trace": traceback.format_exc()[:4000]})
 
 @app.post("/api/tap")
 def tap(data: dict):
@@ -320,10 +323,10 @@ def tap(data: dict):
 
     try:
         with closing(db()) as conn:
-            ensure_user_and_bonus(conn, int(tg_id))
+            ensure_user_and_welcome(conn, int(tg_id))
             cur = conn.cursor()
 
-            # блокируем БД на запись во время одного тапа, чтобы два устройства не пересчитали одновременно
+            # транзакция для защиты от двух устройств одновременно
             cur.execute("BEGIN IMMEDIATE")
 
             cur.execute("""
@@ -336,23 +339,16 @@ def tap(data: dict):
                 conn.commit()
                 return {"ok": False, "error": "User not found"}
 
-            taps_available = int(row["taps_available"])
-            reward = float(row["tap_reward"])
-            cap = float(row["earn_cap_remaining"])
-            balance = float(row["balance_usdt"])
-            total = int(row["taps_total"])
+            taps_available = int(row["taps_available"] or 0)
+            reward = float(row["tap_reward"] or 0.0)
+            cap = float(row["earn_cap_remaining"] or 0.0)
+            balance = float(row["balance_usdt"] or 0.0)
+            total = int(row["taps_total"] or 0)
 
-            # если нет тапок или кап исчерпан или reward=0 — просто возвращаем текущее состояние
             if taps_available <= 0 or reward <= 0 or cap <= 0:
                 conn.commit()
-                return {
-                    "ok": True,
-                    "balance_usdt": balance,
-                    "taps_available": max(0, taps_available),
-                    "tap_reward": reward,
-                    "taps_total": total,
-                    "earn_cap_remaining": max(0.0, cap),
-                }
+                return {"ok": True, "balance_usdt": balance, "taps_available": max(0, taps_available),
+                        "tap_reward": reward, "taps_total": total, "earn_cap_remaining": max(0.0, cap)}
 
             new_balance = balance + reward
             new_taps = taps_available - 1
@@ -371,20 +367,10 @@ def tap(data: dict):
             """, (new_balance, new_taps, new_total, new_cap, int(tg_id)))
 
             conn.commit()
-
-            return {
-                "ok": True,
-                "balance_usdt": new_balance,
-                "taps_available": new_taps,
-                "tap_reward": reward,
-                "taps_total": new_total,
-                "earn_cap_remaining": new_cap
-            }
+            return {"ok": True, "balance_usdt": new_balance, "taps_available": new_taps, "tap_reward": reward,
+                    "taps_total": new_total, "earn_cap_remaining": new_cap}
     except Exception as e:
-        return JSONResponse(
-            status_code=500,
-            content={"ok": False, "error": str(e), "trace": traceback.format_exc()[:4000]}
-        )
+        return JSONResponse(status_code=500, content={"ok": False, "error": str(e), "trace": traceback.format_exc()[:4000]})
 
 @app.get("/api/referrals/{tg_id}")
 def get_referrals(tg_id: int):
@@ -398,14 +384,9 @@ def get_referrals(tg_id: int):
         referrals = cur.fetchall()
         invited_count = len(referrals)
         bonus_total = sum(REFERRAL_BONUS for r in referrals if int(r["bonus_paid"]) == 0)
-        return {
-            "ok": True,
-            "referrals": [dict(r) for r in referrals],
-            "invited_count": invited_count,
-            "bonus_total": bonus_total
-        }
+        return {"ok": True, "referrals": [dict(r) for r in referrals], "invited_count": invited_count, "bonus_total": bonus_total}
 
-# ---------------- PAYMENTS (оставляем как есть по логике) ----------------
+# ---------------- PAYMENTS ----------------
 @app.post("/api/payments/create")
 def create_payment(data: CreateInvoiceIn):
     if data.package_id not in PACKAGES:
@@ -415,7 +396,8 @@ def create_payment(data: CreateInvoiceIn):
     now = int(time.time())
 
     with closing(db()) as conn:
-        ensure_user_and_bonus(conn, int(data.tg_id))
+        # ВАЖНО: payments НЕ трогают welcome
+        ensure_user_rows(conn, int(data.tg_id), bonus_given_default=1)
         cur = conn.cursor()
 
         unique = round(float(pkg["price"]) + random.randint(1, 9999) / 1_000_000, 6)
@@ -427,20 +409,13 @@ def create_payment(data: CreateInvoiceIn):
         conn.commit()
 
         invoice_id = cur.lastrowid
-        return {
-            "ok": True,
-            "invoice": {
-                "id": int(invoice_id),
-                "amount_usdt": unique,
-                "min_amount_usdt": float(pkg["price"]),
-                "address": TRON_RECEIVE_ADDRESS
-            }
-        }
+        return {"ok": True, "invoice": {"id": int(invoice_id), "amount_usdt": unique, "min_amount_usdt": float(pkg["price"]), "address": TRON_RECEIVE_ADDRESS}}
 
 @app.post("/api/payments/check")
 def check_payment(data: CheckInvoiceIn):
     with closing(db()) as conn:
-        ensure_user_and_bonus(conn, int(data.tg_id))
+        # ВАЖНО: payments НЕ трогают welcome
+        ensure_user_rows(conn, int(data.tg_id), bonus_given_default=1)
         cur = conn.cursor()
 
         cur.execute("SELECT * FROM invoices WHERE id=? AND tg_id=?", (int(data.invoice_id), int(data.tg_id)))
